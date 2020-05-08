@@ -68,6 +68,7 @@ include_directories(${EIGEN3_INCLUDE_DIRS})
 
 include_directories(src
   src/api
+  src/robots
   ${USE_OROCOS_INCLUDE_DIRS}
   ${OROCOS-RTT_INCLUDE_DIRS}
 )
@@ -75,6 +76,7 @@ include_directories(src
 orocos_component(${CMAKE_PROJECT_NAME}
   ${PROJECT_SOURCE_DIR}/src/rtt_bullet_embedded.cpp
   ${PROJECT_SOURCE_DIR}/src/api/b3_capi_wrapper_no_gui.cpp
+  ${PROJECT_SOURCE_DIR}/src/robots/rtt_bullet_robot_manipulator_sim.cpp
 ) # ...you may add multiple source files
 
 set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES COMPILE_DEFINITIONS RTT_COMPONENT)

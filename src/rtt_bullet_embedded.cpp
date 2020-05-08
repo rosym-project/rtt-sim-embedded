@@ -88,12 +88,15 @@ bool RTTBulletEmbedded::connect()
 
 bool RTTBulletEmbedded::configureHook()
 {
-    map_modelName_to_id.clear();
-    vec_model_ids.clear();
-    this->connect();
     if (sim->isConnected())
     {
+        map_modelName_to_id.clear();
+        vec_model_ids.clear();
         sim->setGravity(btVector3(0, 0, -9.81));
+    }
+    else
+    {
+        return false;
     }
 
 	//remove all existing objects (if any)
@@ -118,58 +121,11 @@ bool RTTBulletEmbedded::startHook()
         return false;
     }
 
-    if (vec_model_ids.size() > 0) // TEST
-    {
-        int numJoints = sim->getNumJoints(vec_model_ids[0]);
-        b3RobotSimulatorJointMotorArrayArgs mode_params(CONTROL_MODE_PD, numJoints);
-        int tmp_jointIndices[numJoints];
-        double tmp_targetPositions[numJoints];
-        double tmp_forces[numJoints];
-
-        b3JointInfo jointInfo;
-
-        for (unsigned int i = 0; i < numJoints; i++)
-        {
-            sim->getJointInfo(vec_model_ids[0], i, &jointInfo);
-            int qIndex = jointInfo.m_jointIndex;
-            if (qIndex > -1)
-            {
-                PRELOG(Error) << "Motorname " << jointInfo.m_jointName << ", index " << jointInfo.m_jointIndex << RTT::endlog();
-                // self.motorNames.append(str(jointInfo[1]))
-                // self.motorIndices.append(i)
-                // self.zeroForces.append(0.0)
-                tmp_jointIndices[i] = i;
-                tmp_targetPositions[i] = 0.0;
-                tmp_forces[i] = 200.0;
-            }
-
-            sim->resetJointState(vec_model_ids[0], i, 0.0);
-        }
-        
-    }
-
     return true;
 }
 
 void RTTBulletEmbedded::updateHook()
-{    
-    // Load Feedback
-    if (vec_model_ids.size() > 0) // TEST
-    {
-        
-        // b3RobotSimulatorJointMotorArrayArgs mode_params(CONTROL_MODE_VELOCITY, 7);
-        // int tmp_jointIndices[7];
-        // double tmp_forces[7];
-        // for (unsigned int i = 0; i < 7; i++)
-        // {
-        //     tmp_forces[i] = 0.0;
-        // }
-        // mode_params.m_jointIndices = tmp_jointIndices;
-        // mode_params.m_forces = tmp_forces;
-        
-        // sim->setJointMotorControlArray(vec_model_ids[0], mode_params);
-    }
-
+{
     // Step forward!
     sim->stepSimulation();
 }
