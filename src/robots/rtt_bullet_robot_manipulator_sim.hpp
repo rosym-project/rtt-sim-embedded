@@ -58,6 +58,8 @@ public:
   void disconnect();
   bool connect();
   bool connectToExternallySpawnedRobot(const std::string &modelName, int model_id);
+  bool setControlMode(std::string controlMode);
+  bool setActiveKinematicChain(const std::vector<std::string> &jointNames);
 
 private:
   std::shared_ptr<b3CApiWrapperNoGui> sim;
@@ -73,6 +75,8 @@ private:
   double *zero_forces;
   double *max_forces;
   double *target_positions;
+
+  unsigned int active_control_mode;
 
 };
 

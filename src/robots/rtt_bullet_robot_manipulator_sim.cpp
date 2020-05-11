@@ -42,10 +42,75 @@ RTTBulletRobotManipulatorSim::RTTBulletRobotManipulatorSim(std::string const &na
     addOperation("spawnRobot", &RTTBulletRobotManipulatorSim::spawnRobot, this).doc("Returns the model_id to reference the loaded object.");
     addOperation("spawnRobotAtPose", &RTTBulletRobotManipulatorSim::spawnRobotAtPose, this).doc("Returns the model_id to reference the loaded object.");
 
+    addOperation("setControlMode", &RTTBulletRobotManipulatorSim::setControlMode, this, RTT::ClientThread);
+
+    addOperation("setActiveKinematicChain", &RTTBulletRobotManipulatorSim::setActiveKinematicChain, this, RTT::ClientThread);
+
     this->robot_id = -1;
     this->robot_name = "";
+    this->active_control_mode = 0;
 
     sim = std::shared_ptr<b3CApiWrapperNoGui>(new b3CApiWrapperNoGui());
+}
+
+bool RTTBulletRobotManipulatorSim::setActiveKinematicChain(const std::vector<std::string> &jointNames)
+{
+    if (jointNames.size() != this->vec_joint_indices.size())
+    {
+        return false;
+    }
+    // check for inconsistent names
+    for (unsigned int i = 0; i < jointNames.size(); i++)
+    {  
+        if (map_joint_names_2_indices.count(jointNames[i]))
+        {
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    for (unsigned int i = 0; i < jointNames.size(); i++)
+    {  
+        this->vec_joint_indices[i] = this->map_joint_names_2_indices[jointNames[i]];
+        this->joint_indices[i] = vec_joint_indices[i];
+    }
+    return true;
+}
+
+bool RTTBulletRobotManipulatorSim::setControlMode(std::string controlMode)
+{
+    if (controlMode.compare("JointPositionCtrl") == 0)
+    {
+        // handle control modes (initial control mode = PD Position)
+        // b3RobotSimulatorJointMotorArrayArgs mode_params(CONTROL_MODE_PD, this->num_joints);
+        b3RobotSimulatorJointMotorArrayArgs mode_params(CONTROL_MODE_POSITION_VELOCITY_PD, this->num_joints);
+        mode_params.m_jointIndices = this->joint_indices;
+        mode_params.m_forces = this->max_forces;
+        mode_params.m_targetPositions = this->target_positions;
+        PRELOG(Error) << "Switching to CONTROL_MODE_POSITION_VELOCITY_PD" << RTT::endlog();
+        sim->setJointMotorControlArray(this->robot_id, mode_params);
+
+        active_control_mode = 0;
+    }
+    else if (controlMode.compare("JointTorqueCtrl") == 0)
+    {
+        // UNLOCKING THE BREAKS FOR TORQUE CONTROL
+        b3RobotSimulatorJointMotorArrayArgs mode_params(CONTROL_MODE_VELOCITY, this->num_joints);
+        mode_params.m_jointIndices = this->joint_indices;
+        mode_params.m_forces = this->zero_forces;
+        PRELOG(Error) << "Releasing Breaks" << RTT::endlog();
+        sim->setJointMotorControlArray(this->robot_id, mode_params);
+
+        b3RobotSimulatorJointMotorArrayArgs mode_params_trq(CONTROL_MODE_TORQUE, this->num_joints);
+        mode_params_trq.m_jointIndices = this->joint_indices;
+        mode_params_trq.m_forces = this->zero_forces;
+        PRELOG(Error) << "Switching to CONTROL_MODE_TORQUE" << RTT::endlog();
+        sim->setJointMotorControlArray(this->robot_id, mode_params_trq);
+        
+        active_control_mode = 1;
+    }
 }
 
 void RTTBulletRobotManipulatorSim::disconnect()
@@ -58,6 +123,7 @@ bool RTTBulletRobotManipulatorSim::connect()
     if (!sim->isConnected())
     {
         bool isConnected = sim->connect(eCONNECT_SHARED_MEMORY);
+        // bool isConnected = sim->connect(eCONNECT_GUI);
 
         if (isConnected)
         {
@@ -119,6 +185,8 @@ bool RTTBulletRobotManipulatorSim::configureHook()
 
         // Here I should probably also check the order of the joints for the command order TODO
 
+        sim->setGravity(btVector3(0, 0, -9.81));
+
         // Initialize varibales
         this->joint_indices = new int[this->num_joints];
         this->zero_forces = new double[this->num_joints];
@@ -135,19 +203,7 @@ bool RTTBulletRobotManipulatorSim::configureHook()
             sim->resetJointState(this->robot_id, this->joint_indices[i], 0.0);
         }
 
-        // handle control modes (initial control mode = PD Position)
-        // b3RobotSimulatorJointMotorArrayArgs mode_params(CONTROL_MODE_PD, this->num_joints);
-        b3RobotSimulatorJointMotorArrayArgs mode_params(CONTROL_MODE_POSITION_VELOCITY_PD, this->num_joints);
-        mode_params.m_jointIndices = this->joint_indices;
-        mode_params.m_forces = this->max_forces;
-        mode_params.m_targetPositions = this->target_positions;
-        PRELOG(Error) << "Switching to CONTROL_MODE_POSITION_VELOCITY_PD" << RTT::endlog();
-        sim->setJointMotorControlArray(this->robot_id, mode_params);
-
-        // UNLOCKING THE BREAKS FOR TORQUE CONTROL
-        // b3RobotSimulatorJointMotorArrayArgs mode_params(CONTROL_MODE_VELOCITY, 7);
-        // mode_params.m_jointIndices = tmp_jointIndices;
-        // mode_params.m_forces = tmp_forces;
+        this->setControlMode("JointPositionCtrl");
 
     }
     else
@@ -169,8 +225,52 @@ bool RTTBulletRobotManipulatorSim::startHook()
 }
 
 void RTTBulletRobotManipulatorSim::updateHook()
-{    
+{   
+    // b3JointStates2 _joint_states;
+    // sim->getJointStates(this->robot_id, _joint_states);
 
+    // PRELOG(Error) << "vq = " << _joint_states.m_actualStateQ[1] << RTT::endlog();
+
+    Eigen::VectorXf vq(this->num_joints);
+    Eigen::VectorXf vqd(this->num_joints);
+    Eigen::VectorXf vgc(this->num_joints);
+    // Eigen::VectorXf vqdd = Eigen::VectorXf::Zero(this->num_joints);
+    double q[this->num_joints];
+    double qd[this->num_joints];
+    double zqdd[this->num_joints];
+    double out_gc[this->num_joints];
+
+    for (unsigned int j = 0; j < this->num_joints; j++)
+    {
+        b3JointSensorState state;
+        sim->getJointState(this->robot_id, j, &state);
+        q[j] = state.m_jointPosition; // this->joint_indices[j]
+        qd[j] = state.m_jointVelocity; // this->joint_indices[j]
+        zqdd[j] = 0.0;
+
+        vq(j) = q[j];
+        vqd(j) = qd[j];
+    }
+    // PRELOG(Error) << "vq = " << vq << RTT::endlog();
+    // PRELOG(Error) << "vqd = " << vqd << RTT::endlog();
+
+    sim->calculateInverseDynamics(this->robot_id, q, qd, zqdd, out_gc);
+    for (unsigned int j = 0; j < this->num_joints; j++)
+    {
+        vgc(j) = out_gc[j];
+    }
+    PRELOG(Error) << "vgc = " << vgc << RTT::endlog();
+
+    // if (this->active_control_mode == 1)
+    // {
+        b3RobotSimulatorJointMotorArrayArgs mode_params_trq(CONTROL_MODE_TORQUE, this->num_joints);
+        mode_params_trq.m_jointIndices = this->joint_indices;
+        mode_params_trq.m_forces = out_gc;
+        sim->setJointMotorControlArray(this->robot_id, mode_params_trq);
+    // }
+
+    // this->trigger();
+    sim->stepSimulation();
 }
 
 void RTTBulletRobotManipulatorSim::stopHook()
