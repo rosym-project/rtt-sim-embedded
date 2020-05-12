@@ -42,9 +42,11 @@ RTTBulletRobotManipulatorSim::RTTBulletRobotManipulatorSim(std::string const &na
     addOperation("spawnRobot", &RTTBulletRobotManipulatorSim::spawnRobot, this).doc("Returns the model_id to reference the loaded object.");
     addOperation("spawnRobotAtPose", &RTTBulletRobotManipulatorSim::spawnRobotAtPose, this).doc("Returns the model_id to reference the loaded object.");
 
-    addOperation("setControlMode", &RTTBulletRobotManipulatorSim::setControlMode, this, RTT::ClientThread);
+    addOperation("setControlMode", &RTTBulletRobotManipulatorSim::setControlMode, this, RTT::OwnThread);
 
-    addOperation("setActiveKinematicChain", &RTTBulletRobotManipulatorSim::setActiveKinematicChain, this, RTT::ClientThread);
+    addOperation("setActiveKinematicChain", &RTTBulletRobotManipulatorSim::setActiveKinematicChain, this, RTT::OwnThread);
+
+    addOperation("connectToExternallySpawnedRobot", &RTTBulletRobotManipulatorSim::connectToExternallySpawnedRobot, this, RTT::OwnThread);
 
     this->robot_id = -1;
     this->robot_name = "";
@@ -154,6 +156,8 @@ bool RTTBulletRobotManipulatorSim::configureHook()
             PRELOG(Error) << "No robot associated, please spawn or connect a robot first!" << RTT::endlog();
             return false;
         }
+
+        sim->syncBodies();
         
         // Get number of joints
         int _num_joints = sim->getNumJoints(this->robot_id);
@@ -185,7 +189,7 @@ bool RTTBulletRobotManipulatorSim::configureHook()
 
         // Here I should probably also check the order of the joints for the command order TODO
 
-        sim->setGravity(btVector3(0, 0, -9.81));
+        // sim->setGravity(btVector3(0, 0, -9.81));
 
         // Initialize varibales
         this->joint_indices = new int[this->num_joints];
@@ -200,10 +204,13 @@ bool RTTBulletRobotManipulatorSim::configureHook()
             this->max_forces[i] = 200.0; // TODO magic number
             this->target_positions[i] = 0.0; // TODO magic number (initial config)
 
-            sim->resetJointState(this->robot_id, this->joint_indices[i], 0.0);
+            // sim->resetJointState(this->robot_id, this->joint_indices[i], 0.0);
+            PRELOG(Error) << "joint_indices[" << i << "] = " << joint_indices[i] << RTT::endlog();
         }
 
-        this->setControlMode("JointPositionCtrl");
+        
+
+        // this->setControlMode("JointPositionCtrl");
 
     }
     else
@@ -243,9 +250,9 @@ void RTTBulletRobotManipulatorSim::updateHook()
     for (unsigned int j = 0; j < this->num_joints; j++)
     {
         b3JointSensorState state;
-        sim->getJointState(this->robot_id, j, &state);
-        q[j] = state.m_jointPosition; // this->joint_indices[j]
-        qd[j] = state.m_jointVelocity; // this->joint_indices[j]
+        sim->getJointState(this->robot_id, joint_indices[j], &state);
+        q[j] = state.m_jointPosition;
+        qd[j] = state.m_jointVelocity;
         zqdd[j] = 0.0;
 
         vq(j) = q[j];
@@ -259,7 +266,8 @@ void RTTBulletRobotManipulatorSim::updateHook()
     {
         vgc(j) = out_gc[j];
     }
-    PRELOG(Error) << "vgc = " << vgc << RTT::endlog();
+    // PRELOG(Error) << "POS = " << vq << RTT::endlog();
+    PRELOG(Error) << "GRA = " << vgc << RTT::endlog();
 
     // if (this->active_control_mode == 1)
     // {
@@ -267,6 +275,19 @@ void RTTBulletRobotManipulatorSim::updateHook()
         mode_params_trq.m_jointIndices = this->joint_indices;
         mode_params_trq.m_forces = out_gc;
         sim->setJointMotorControlArray(this->robot_id, mode_params_trq);
+
+        // for (unsigned int j = 0; j < this->num_joints; j++)
+        // {
+        //     b3RobotSimulatorJointMotorArgs args(CONTROL_MODE_TORQUE);
+        //     args.m_maxTorqueValue = out_gc[j];
+        //     sim->setJointMotorControl(this->robot_id, joint_indices[j], args);
+
+        //     // b3GetJointInfo(kPhysClient, twojoint, jointNameToId["joint_2"], &jointInfo);
+        //     // command = b3JointControlCommandInit2(kPhysClient, twojoint, CONTROL_MODE_TORQUE);
+        //     // b3JointControlSetDesiredForceTorque(command, jointInfo.m_uIndex, 0.5 * sin(10 * simTimeS));
+        //     // statusHandle = b3SubmitClientCommandAndWaitStatus(kPhysClient, command);
+        // }
+
     // }
 
     // this->trigger();
