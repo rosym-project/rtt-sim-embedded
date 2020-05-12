@@ -2637,10 +2637,7 @@ bool b3CApiWrapperNoGui::connect(int mode, const std::string& hostName, int port
 	{
 		case eCONNECT_DIRECT:
 		{
-// #ifndef BT_DISABLE_PHYSICS_DIRECT
-// 			sm = b3ConnectPhysicsDirect();
-// #endif  //BT_DISABLE_PHYSICS_DIRECT
-
+			sm = b3ConnectPhysicsDirect();
 			break;
 		}
 		case eCONNECT_SHARED_MEMORY:

@@ -48,6 +48,12 @@ RTTBulletRobotManipulatorSim::RTTBulletRobotManipulatorSim(std::string const &na
 
     addOperation("connectToExternallySpawnedRobot", &RTTBulletRobotManipulatorSim::connectToExternallySpawnedRobot, this, RTT::OwnThread);
 
+    addOperation("spawnRobotAtPos", &RTTBulletRobotManipulatorSim::spawnRobotAtPos, this, RTT::OwnThread);
+
+    addProperty("step", step);
+
+    this->step = true;
+
     this->robot_id = -1;
     this->robot_name = "";
     this->active_control_mode = 0;
@@ -125,7 +131,7 @@ bool RTTBulletRobotManipulatorSim::connect()
     if (!sim->isConnected())
     {
         bool isConnected = sim->connect(eCONNECT_SHARED_MEMORY);
-        // bool isConnected = sim->connect(eCONNECT_GUI);
+        // bool isConnected = sim->connect(eCONNECT_DIRECT);
 
         if (isConnected)
         {
@@ -267,7 +273,23 @@ void RTTBulletRobotManipulatorSim::updateHook()
         vgc(j) = out_gc[j];
     }
     // PRELOG(Error) << "POS = " << vq << RTT::endlog();
-    PRELOG(Error) << "GRA = " << vgc << RTT::endlog();
+    // PRELOG(Error) << "GRA = " << vgc << RTT::endlog();
+
+    // double* massMatrix = NULL;
+    int byteSizeDofCount = sizeof(double) * this->num_joints;
+    double* massMatrix = (double*)malloc(this->num_joints * byteSizeDofCount);
+    sim->calculateMassMatrix(this->robot_id, q, this->num_joints, massMatrix, 0);
+
+    Eigen::MatrixXf m = Eigen::MatrixXf::Zero(this->num_joints, this->num_joints);
+    for (unsigned int u = 0; u < this->num_joints; u++)
+    {
+        for (unsigned int v = 0; v < this->num_joints; v++)
+        {
+            m(u,v) = massMatrix[u * this->num_joints + v];
+        }
+    }
+
+    // PRELOG(Error) << m << RTT::endlog();
 
     // if (this->active_control_mode == 1)
     // {
@@ -275,6 +297,8 @@ void RTTBulletRobotManipulatorSim::updateHook()
         mode_params_trq.m_jointIndices = this->joint_indices;
         mode_params_trq.m_forces = out_gc;
         sim->setJointMotorControlArray(this->robot_id, mode_params_trq);
+
+
 
         // for (unsigned int j = 0; j < this->num_joints; j++)
         // {
@@ -290,8 +314,9 @@ void RTTBulletRobotManipulatorSim::updateHook()
 
     // }
 
+    if (this->step)
+        sim->stepSimulation();
     // this->trigger();
-    sim->stepSimulation();
 }
 
 void RTTBulletRobotManipulatorSim::stopHook()
@@ -321,6 +346,27 @@ int RTTBulletRobotManipulatorSim::spawnRobotAtPose(const std::string &modelName,
 
             btVector3 basePosition = btVector3(t(0), t(1), t(2));
             btQuaternion baseOrientation = btQuaternion(r(1), r(2), r(3), r(0));
+
+            sim->resetBasePositionAndOrientation(model_id, basePosition, baseOrientation);
+            return model_id;
+        }
+    }
+    PRELOG(Error) << "Could NOT load Urdf: " << modelURDF << RTT::endlog();
+    return -1;
+}
+
+int RTTBulletRobotManipulatorSim::spawnRobotAtPos(const std::string &modelName, const std::string &modelURDF, const double &x, const double &y, const double &z)
+{
+    if (sim->isConnected()) {
+        int model_id = sim->loadURDF(modelURDF);
+        if (model_id >= 0)
+        {
+            this->robot_id = model_id;
+
+            PRELOG(Error) << "Loaded Urdf. Received model_id = " << model_id << RTT::endlog();
+
+            btVector3 basePosition = btVector3(x, y, z);
+            btQuaternion baseOrientation = btQuaternion(0, 0, 0, 1);
 
             sim->resetBasePositionAndOrientation(model_id, basePosition, baseOrientation);
             return model_id;

@@ -54,6 +54,7 @@ public:
   void cleanupHook();
 
   int spawnRobotAtPose(const std::string &modelName, const std::string &modelURDF, const Eigen::VectorXf &t, const Eigen::VectorXf &r);
+  int spawnRobotAtPos(const std::string &modelName, const std::string &modelURDF, const double &x, const double &y, const double &z);
   int spawnRobot(const std::string &modelName, const std::string &modelURDF);
   void disconnect();
   bool connect();
@@ -65,6 +66,7 @@ private:
   std::shared_ptr<b3CApiWrapperNoGui> sim;
   int robot_id;
   std::string robot_name;
+  bool step;
 
   int num_joints;
   int *joint_indices;
@@ -77,7 +79,6 @@ private:
   double *target_positions;
 
   unsigned int active_control_mode;
-
 };
 
 } // namespace cosima
