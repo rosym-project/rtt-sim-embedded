@@ -39,6 +39,8 @@
 
 #include "../api/b3_capi_wrapper_no_gui.hpp"
 
+#include "robot_manipulator_internal.hpp"
+
 namespace cosima
 {
 
@@ -58,27 +60,16 @@ public:
   int spawnRobot(const std::string &modelName, const std::string &modelURDF);
   void disconnect();
   bool connect();
-  bool connectToExternallySpawnedRobot(const std::string &modelName, int model_id);
-  bool setControlMode(std::string controlMode);
+  bool connectToExternallySpawnedRobot(const std::string &modelName, const unsigned int &modelId);
+  bool setControlMode(const std::string &modelName, const std::string &controlMode);
   bool setActiveKinematicChain(const std::vector<std::string> &jointNames);
 
 private:
   std::shared_ptr<b3CApiWrapperNoGui> sim;
-  int robot_id;
-  std::string robot_name;
   bool step;
 
-  int num_joints;
-  int *joint_indices;
-  std::map<std::string, int> map_joint_names_2_indices;
-  std::vector<int> vec_joint_indices;
-
-  // Helpers
-  double *zero_forces;
-  double *max_forces;
-  double *target_positions;
-
-  unsigned int active_control_mode;
+  // std::map<unsigned int, std::shared_ptr<RobotManipulator>> map_robot_manipulators;
+  std::map<std::string, std::shared_ptr<RobotManipulator>> map_robot_manipulators;
 };
 
 } // namespace cosima
