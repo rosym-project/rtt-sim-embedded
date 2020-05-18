@@ -1,4 +1,4 @@
-#include "b3_capi_wrapper_no_gui.hpp"
+#include "../include/rtt-bullet-embedded/api/b3_capi_wrapper_no_gui.hpp"
 
 #include <bullet/SharedMemory/PhysicsClientC_API.h>
 #include <bullet/SharedMemory/b3RobotSimulatorClientAPI_InternalData.h>

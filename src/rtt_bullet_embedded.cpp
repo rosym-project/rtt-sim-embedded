@@ -26,7 +26,7 @@
 
 // https://github.com/bulletphysics/bullet3/issues/1459
 
-#include "rtt_bullet_embedded.hpp"
+#include "../include/rtt-bullet-embedded/rtt_bullet_embedded.hpp"
 #include <rtt/Component.hpp> // needed for the macro at the end of this file
 
 #include <unistd.h>
@@ -47,11 +47,11 @@ RTTBulletEmbedded::RTTBulletEmbedded(std::string const &name) : RTT::TaskContext
     addOperation("resetSimulation", &RTTBulletEmbedded::resetSimulation, this);
 
     this->addOperation("setGravityVector",
-					   &RTTBulletEmbedded::setGravityVector, this, RTT::OwnThread)
-		.doc("Set the gravity vector for the physics engine.")
-		.arg("x", "World X axis")
-		.arg("y", "World Y axis")
-		.arg("z", "World Z axis");
+                       &RTTBulletEmbedded::setGravityVector, this, RTT::OwnThread)
+        .doc("Set the gravity vector for the physics engine.")
+        .arg("x", "World X axis")
+        .arg("y", "World Y axis")
+        .arg("z", "World Z axis");
 
     sim = std::shared_ptr<b3CApiWrapperNoGui>(new b3CApiWrapperNoGui());
 }
@@ -82,7 +82,7 @@ bool RTTBulletEmbedded::connect()
     {
         PRELOG(Error) << "Seems to be already connected" << RTT::endlog();
     }
-    
+
     return false;
 }
 
@@ -99,9 +99,9 @@ bool RTTBulletEmbedded::configureHook()
         return false;
     }
 
-	//remove all existing objects (if any)
-	// sim->resetSimulation();
-	// sim->setNumSolverIterations(100);
+    //remove all existing objects (if any)
+    // sim->resetSimulation();
+    // sim->setNumSolverIterations(100);
     return true;
 }
 
@@ -151,7 +151,8 @@ int RTTBulletEmbedded::getIdFromModelName(const std::string &modelName)
 
 int RTTBulletEmbedded::spawnModelAtPose(const std::string &modelName, const std::string &modelURDF, const Eigen::VectorXf &t, const Eigen::VectorXf &r)
 {
-    if (sim->isConnected()) {
+    if (sim->isConnected())
+    {
         int model_id = sim->loadURDF(modelURDF);
         if (model_id >= 0)
         {
@@ -181,12 +182,12 @@ int RTTBulletEmbedded::spawnModel(const std::string &modelName, const std::strin
 
 bool RTTBulletEmbedded::setGravityVector(const double x, const double y, const double z)
 {
-	if (sim->isConnected())
-	{
+    if (sim->isConnected())
+    {
         sim->setGravity(btVector3(x, y, z));
         PRELOG(Info) << "Changed gravity vector to (" << x << ", " << y << ", " << z << ")" << RTT::endlog();
-	}
-	return false;
+    }
+    return false;
 }
 
 //this macro should appear only once per library

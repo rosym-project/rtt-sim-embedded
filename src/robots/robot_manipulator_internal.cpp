@@ -24,7 +24,7 @@
  *
  * ============================================================ */
 
-#include "robot_manipulator_internal.hpp"
+#include "../include/rtt-bullet-embedded/robots/robot_manipulator_internal.hpp"
 #include <rtt/Component.hpp> // needed for the macro at the end of this file
 
 #include <unistd.h>
@@ -63,8 +63,8 @@ void RobotManipulator::sense()
         this->zero_accelerations[j] = 0.0;
 
         // Convert to eigen data types
-        this->out_position_fdb_var(j) = this->q[j];
-        this->out_velocities_fdb_var(j) = this->qd[j];
+        this->out_jointstate_fdb_var.position[j] = this->q[j];
+        this->out_jointstate_fdb_var.velocity[j] = this->qd[j];
     }
 
     //////////////////////////////////////////////
@@ -93,9 +93,9 @@ void RobotManipulator::sense()
 
 void RobotManipulator::writeToOrocos()
 {
-    this->out_position_fdb.write(this->out_position_fdb_var);
-    this->out_velocities_fdb.write(this->out_velocities_fdb_var);
+    this->out_jointstate_fdb.write(this->out_jointstate_fdb_var);
     this->out_gc_fdb.write(this->out_gc_fdb_var);
+    RTT::log(RTT::Error) << "Bullet out_gc_fdb_var = " << out_gc_fdb_var << RTT::endlog();
     this->out_inertia_fdb.write(this->out_inertia_fdb_var);
 }
 
@@ -356,25 +356,23 @@ bool RobotManipulator::configure()
         out_inertia_fdb.setDataSample(out_inertia_fdb_var);
         tc->ports()->addPort(out_inertia_fdb);
 
-        if (tc->getPort("out_position_fdb"))
+        if (tc->getPort("out_jointstate_fdb"))
         {
-            tc->ports()->removePort("out_position_fdb");
+            tc->ports()->removePort("out_jointstate_fdb");
         }
-        out_position_fdb_var = Eigen::VectorXd::Zero(this->num_joints);
-        out_position_fdb.setName("out_" + this->robot_name + "_position_fdb");
-        out_position_fdb.doc("Output port for sending joint space positions");
-        out_position_fdb.setDataSample(out_position_fdb_var);
-        tc->ports()->addPort(out_position_fdb);
-
-        if (tc->getPort("out_velocities_fdb"))
+        out_jointstate_fdb_var.position.resize(this->num_joints);
+        out_jointstate_fdb_var.velocity.resize(this->num_joints);
+        out_jointstate_fdb_var.effort.resize(this->num_joints);
+        for (unsigned int i = 0; i < this->num_joints; i++)
         {
-            tc->ports()->removePort("out_velocities_fdb");
+            out_jointstate_fdb_var.position[i] = 0.0;
+            out_jointstate_fdb_var.velocity[i] = 0.0;
+            out_jointstate_fdb_var.effort[i] = 0.0;
         }
-        out_velocities_fdb_var = Eigen::VectorXd::Zero(this->num_joints);
-        out_velocities_fdb.setName("out_" + this->robot_name + "_velocities_fdb");
-        out_velocities_fdb.doc("Output port for sending joint space velocities");
-        out_velocities_fdb.setDataSample(out_velocities_fdb_var);
-        tc->ports()->addPort(out_velocities_fdb);
+        out_jointstate_fdb.setName("out_" + this->robot_name + "_jointstate_fdb");
+        out_jointstate_fdb.doc("Output port for sending joint space state");
+        out_jointstate_fdb.setDataSample(out_jointstate_fdb_var);
+        tc->ports()->addPort(out_jointstate_fdb);
 
 
         // Last action from the configuration side

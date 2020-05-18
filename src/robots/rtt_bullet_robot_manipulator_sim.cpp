@@ -24,7 +24,7 @@
  *
  * ============================================================ */
 
-#include "rtt_bullet_robot_manipulator_sim.hpp"
+#include "../include/rtt-bullet-embedded/robots/rtt_bullet_robot_manipulator_sim.hpp"
 #include <rtt/Component.hpp> // needed for the macro at the end of this file
 
 #include <unistd.h>
@@ -65,8 +65,7 @@ bool RTTBulletRobotManipulatorSim::setControlMode(const std::string &modelName, 
 {
     if (map_robot_manipulators.count(modelName))
     {
-        map_robot_manipulators[modelName]->setControlMode(controlMode);
-        return true;
+        return map_robot_manipulators[modelName]->setControlMode(controlMode);
     }
     else
     {
@@ -102,15 +101,15 @@ bool RTTBulletRobotManipulatorSim::connect()
     {
         PRELOG(Error) << "Seems to be already connected" << RTT::endlog();
     }
-    
+
     return false;
 }
 
 bool RTTBulletRobotManipulatorSim::configureHook()
 {
-    for (auto const& e : map_robot_manipulators)
+    for (auto const &e : map_robot_manipulators)
     {
-        if(!e.second->configure())
+        if (!e.second->configure())
         {
             return false;
         }
@@ -129,14 +128,14 @@ bool RTTBulletRobotManipulatorSim::startHook()
 }
 
 void RTTBulletRobotManipulatorSim::updateHook()
-{   
-    for (auto const& e : map_robot_manipulators)
+{
+    for (auto const &e : map_robot_manipulators)
     {
         e.second->sense();
         e.second->writeToOrocos();
     }
 
-    for (auto const& e : map_robot_manipulators)
+    for (auto const &e : map_robot_manipulators)
     {
         e.second->readFromOrocos();
         e.second->act();
@@ -156,8 +155,8 @@ void RTTBulletRobotManipulatorSim::cleanupHook()
 
 bool RTTBulletRobotManipulatorSim::connectToExternallySpawnedRobot(const std::string &modelName, const unsigned int &modelId)
 {
-    btVector3 basePosition = btVector3(0,0,0);
-    btQuaternion baseOrientation = btQuaternion(0,0,0,1);
+    btVector3 basePosition = btVector3(0, 0, 0);
+    btQuaternion baseOrientation = btQuaternion(0, 0, 0, 1);
     bool ret = sim->getBasePositionAndOrientation(modelId, basePosition, baseOrientation);
     if (ret)
     {
@@ -171,8 +170,13 @@ bool RTTBulletRobotManipulatorSim::connectToExternallySpawnedRobot(const std::st
 
 int RTTBulletRobotManipulatorSim::spawnRobotAtPose(const std::string &modelName, const std::string &modelURDF, const Eigen::VectorXf &t, const Eigen::VectorXf &r)
 {
-    if (sim->isConnected()) {
-        int model_id = sim->loadURDF(modelURDF);
+    if (sim->isConnected())
+    {
+        b3RobotSimulatorLoadUrdfFileArgs _args;
+        // _args.m_flags = URDF_USE_INERTIA_FROM_FILE | URDF_USE_SELF_COLLISION;
+        _args.m_flags = URDF_USE_INERTIA_FROM_FILE;
+
+        int model_id = sim->loadURDF(modelURDF, _args);
         if (model_id >= 0)
         {
             PRELOG(Error) << "Loaded Urdf. Received model_id = " << model_id << RTT::endlog();
