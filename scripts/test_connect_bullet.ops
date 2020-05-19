@@ -47,8 +47,8 @@ robot.spawnRobot("kuka1", "/home/dwigand/code/cogimon/CoSimA/pyBullet/pyComplian
 # ...
 # Configure the robots and create the necessary OROCOS RTT ports.
 robot.configure()
-# Chose a desired control mode: (JointGravComp, JointTorqueCtrl, JointPositionCtrl).
+# Choose a desired control mode: (JointGravComp, JointTorqueCtrl, JointPositionCtrl).
 # This can also be changed during runtime.
 robot.setControlMode("kuka1", "JointGravComp")
 # Start the component to exchange data with OROCOS RTT and the simulators.
-robot.start
+robot.start()

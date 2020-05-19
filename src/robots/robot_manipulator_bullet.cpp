@@ -89,7 +89,7 @@ void RobotManipulatorBullet::writeToOrocos()
 {
     this->out_jointstate_fdb.write(this->out_jointstate_fdb_var);
     this->out_gc_fdb.write(this->out_gc_fdb_var);
-    RTT::log(RTT::Error) << "Bullet out_gc_fdb_var = " << out_gc_fdb_var << RTT::endlog();
+    // RTT::log(RTT::Error) << "Bullet out_gc_fdb_var = " << out_gc_fdb_var << RTT::endlog();
     this->out_inertia_fdb.write(this->out_inertia_fdb_var);
 }
 
