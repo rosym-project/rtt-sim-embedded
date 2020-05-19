@@ -24,7 +24,7 @@
  *
  * ============================================================ */
 
-#include "../include/rtt-bullet-embedded/robots/robot_manipulator_internal.hpp"
+#include "../include/cosima-robot-sim/robots/robot_manipulator_bullet.hpp"
 #include <rtt/Component.hpp> // needed for the macro at the end of this file
 
 #include <unistd.h>
@@ -34,19 +34,12 @@
 using namespace cosima;
 using namespace RTT;
 
-RobotManipulator::RobotManipulator(const std::string &name, const unsigned int &model_id, std::shared_ptr<b3CApiWrapperNoGui> sim, RTT::TaskContext* tc)
+RobotManipulatorBullet::RobotManipulatorBullet(const std::string &name, const unsigned int &model_id, std::shared_ptr<b3CApiWrapperNoGui> sim, RTT::TaskContext *tc) : RobotManipulatorIF(name, tc)
 {
-    // Initialize
-    this->robot_id = model_id;
-    this->robot_name = name;
-    this->active_control_mode = ControlModes::JointGravComp;
-    this->requested_control_mode = ControlModes::JointPosCtrl;
-
     this->sim = sim;
-    this->tc = tc;
 }
 
-void RobotManipulator::sense()
+void RobotManipulatorBullet::sense()
 {
     ////////////////////////////////////////////////////
     ///////// Get Joint States from Simulation /////////
@@ -86,12 +79,12 @@ void RobotManipulator::sense()
     {
         for (unsigned int v = 0; v < this->num_joints; v++)
         {
-            this->out_inertia_fdb_var(u,v) = this->M[u * this->num_joints + v];
+            this->out_inertia_fdb_var(u, v) = this->M[u * this->num_joints + v];
         }
     }
 }
 
-void RobotManipulator::writeToOrocos()
+void RobotManipulatorBullet::writeToOrocos()
 {
     this->out_jointstate_fdb.write(this->out_jointstate_fdb_var);
     this->out_gc_fdb.write(this->out_gc_fdb_var);
@@ -99,7 +92,7 @@ void RobotManipulator::writeToOrocos()
     this->out_inertia_fdb.write(this->out_inertia_fdb_var);
 }
 
-void RobotManipulator::readFromOrocos()
+void RobotManipulatorBullet::readFromOrocos()
 {
     this->in_JointPositionCtrl_cmd_flow = this->in_JointPositionCtrl_cmd.read(this->in_JointPositionCtrl_cmd_var);
     if (this->in_JointPositionCtrl_cmd_flow != RTT::NoData)
@@ -119,7 +112,7 @@ void RobotManipulator::readFromOrocos()
     }
 }
 
-void RobotManipulator::act()
+void RobotManipulatorBullet::act()
 {
     //////////////////////////////////////////////
     ///////// Handle Control Mode switch /////////
@@ -127,7 +120,7 @@ void RobotManipulator::act()
     if (this->requested_control_mode != this->active_control_mode)
     {
         if ((this->requested_control_mode == ControlModes::JointTrqCtrl) || (this->requested_control_mode == ControlModes::JointGravComp))
-        {   
+        {
             // Only if we had a torque-unrelated control mode active
             if ((this->active_control_mode != ControlModes::JointTrqCtrl) || (this->active_control_mode != ControlModes::JointGravComp))
             {
@@ -135,16 +128,16 @@ void RobotManipulator::act()
                 b3RobotSimulatorJointMotorArrayArgs mode_params(CONTROL_MODE_VELOCITY, this->num_joints);
                 mode_params.m_jointIndices = this->joint_indices;
                 mode_params.m_forces = this->zero_forces;
-                PRELOG(Error,this->tc) << "Releasing the breaks" << RTT::endlog();
+                PRELOG(Error, this->tc) << "Releasing the breaks" << RTT::endlog();
                 sim->setJointMotorControlArray(this->robot_id, mode_params);
 
                 if (this->requested_control_mode == ControlModes::JointTrqCtrl)
                 {
-                    PRELOG(Error,this->tc) << "Switching to JointTrqCtrl" << RTT::endlog();
+                    PRELOG(Error, this->tc) << "Switching to JointTrqCtrl" << RTT::endlog();
                 }
                 else if (this->requested_control_mode == ControlModes::JointGravComp)
                 {
-                    PRELOG(Error,this->tc) << "Switching to JointGravComp" << RTT::endlog();
+                    PRELOG(Error, this->tc) << "Switching to JointGravComp" << RTT::endlog();
                 }
             }
             // Else just set the new control mode for the next phase
@@ -157,7 +150,7 @@ void RobotManipulator::act()
             mode_params.m_jointIndices = this->joint_indices;
             mode_params.m_forces = this->max_forces;
             mode_params.m_targetPositions = this->target_positions;
-            PRELOG(Error,this->tc) << "Switching to JointPosCtrl" << RTT::endlog();
+            PRELOG(Error, this->tc) << "Switching to JointPosCtrl" << RTT::endlog();
             sim->setJointMotorControlArray(this->robot_id, mode_params);
         }
 
@@ -190,7 +183,7 @@ void RobotManipulator::act()
     }
 }
 
-bool RobotManipulator::setActiveKinematicChain(const std::vector<std::string> &jointNames)
+bool RobotManipulatorBullet::setActiveKinematicChain(const std::vector<std::string> &jointNames)
 {
     if (jointNames.size() != this->vec_joint_indices.size())
     {
@@ -198,7 +191,7 @@ bool RobotManipulator::setActiveKinematicChain(const std::vector<std::string> &j
     }
     // check for inconsistent names
     for (unsigned int i = 0; i < jointNames.size(); i++)
-    {  
+    {
         if (map_joint_names_2_indices.count(jointNames[i]))
         {
         }
@@ -209,14 +202,14 @@ bool RobotManipulator::setActiveKinematicChain(const std::vector<std::string> &j
     }
 
     for (unsigned int i = 0; i < jointNames.size(); i++)
-    {  
+    {
         this->vec_joint_indices[i] = this->map_joint_names_2_indices[jointNames[i]];
         this->joint_indices[i] = vec_joint_indices[i];
     }
     return true;
 }
 
-bool RobotManipulator::setControlMode(std::string controlMode)
+bool RobotManipulatorBullet::setControlMode(const std::string &controlMode)
 {
     if (controlMode.compare("JointPositionCtrl") == 0)
     {
@@ -232,24 +225,24 @@ bool RobotManipulator::setControlMode(std::string controlMode)
     }
 }
 
-bool RobotManipulator::configure()
+bool RobotManipulatorBullet::configure()
 {
     if (sim->isConnected())
     {
         // Check if a model is loaded, which needs to be the first step!
         if (this->robot_id < 0)
         {
-            PRELOG(Error,this->tc) << "No robot associated, please spawn or connect a robot first!" << RTT::endlog();
+            PRELOG(Error, this->tc) << "No robot associated, please spawn or connect a robot first!" << RTT::endlog();
             return false;
         }
 
         sim->syncBodies();
-        
+
         // Get number of joints
         int _num_joints = sim->getNumJoints(this->robot_id);
         if (_num_joints <= 0)
         {
-            PRELOG(Error,this->tc) << "The associated object is not a robot, since it has " << _num_joints << " joints!" << RTT::endlog();
+            PRELOG(Error, this->tc) << "The associated object is not a robot, since it has " << _num_joints << " joints!" << RTT::endlog();
             this->num_joints = -1;
             return false;
         }
@@ -264,14 +257,14 @@ bool RobotManipulator::configure()
             int qIndex = jointInfo.m_jointIndex;
             if ((qIndex > -1) && (jointInfo.m_jointType != eFixedType))
             {
-                PRELOG(Error,this->tc) << "Motorname " << jointInfo.m_jointName << ", index " << jointInfo.m_jointIndex << RTT::endlog();
+                PRELOG(Error, this->tc) << "Motorname " << jointInfo.m_jointName << ", index " << jointInfo.m_jointIndex << RTT::endlog();
                 map_joint_names_2_indices[jointInfo.m_jointName] = qIndex;
                 vec_joint_indices.push_back(qIndex);
             }
         }
 
         this->num_joints = vec_joint_indices.size();
-        PRELOG(Error,this->tc) << "this->num_joints " << this->num_joints << RTT::endlog();
+        PRELOG(Error, this->tc) << "this->num_joints " << this->num_joints << RTT::endlog();
 
         // Here I should probably also check the order of the joints for the command order TODO
 
@@ -287,7 +280,7 @@ bool RobotManipulator::configure()
         this->qd = new double[this->num_joints];
         this->gc = new double[this->num_joints];
         int byteSizeDofCountDouble = sizeof(double) * this->num_joints;
-        this->M = (double*)malloc(this->num_joints * byteSizeDofCountDouble);
+        this->M = (double *)malloc(this->num_joints * byteSizeDofCountDouble);
 
         // Initialize acting variables
         this->cmd_trq = new double[this->num_joints];
@@ -297,7 +290,7 @@ bool RobotManipulator::configure()
         {
             this->joint_indices[i] = vec_joint_indices[i];
             this->zero_forces[i] = 0.0;
-            this->max_forces[i] = 200.0; // TODO magic number
+            this->max_forces[i] = 200.0;     // TODO magic number
             this->target_positions[i] = 0.0; // TODO magic number (initial config)
             this->zero_accelerations[i] = 0.0;
 
@@ -306,77 +299,16 @@ bool RobotManipulator::configure()
             this->gc[i] = 0.0;
             for (unsigned int j = 0; j < this->num_joints; j++)
             {
-                this->M[i*this->num_joints+j] = 0.0;
+                this->M[i * this->num_joints + j] = 0.0;
             }
             this->cmd_trq[i] = 0.0;
             this->cmd_pos[i] = 0.0;
 
             // sim->resetJointState(this->robot_id, this->joint_indices[i], 0.0);
-            PRELOG(Error,this->tc) << "joint_indices[" << i << "] = " << joint_indices[i] << RTT::endlog();
+            PRELOG(Error, this->tc) << "joint_indices[" << i << "] = " << joint_indices[i] << RTT::endlog();
         }
 
-        // Add OROCOS RTT ports
-        if (tc->getPort("in_JointPositionCtrl_cmd"))
-        {
-            tc->ports()->removePort("in_JointPositionCtrl_cmd");
-        }
-        in_JointPositionCtrl_cmd_var = Eigen::VectorXd::Zero(this->num_joints);
-        in_JointPositionCtrl_cmd.setName("in_" + this->robot_name + "_JointPositionCtrl_cmd");
-        in_JointPositionCtrl_cmd.doc("Input port for reading joint position commands");
-        tc->ports()->addPort(in_JointPositionCtrl_cmd);
-        in_JointPositionCtrl_cmd_flow = RTT::NoData;
-
-        if (tc->getPort("in_JointTorqueCtrl_cmd"))
-        {
-            tc->ports()->removePort("in_JointTorqueCtrl_cmd");
-        }
-        in_JointTorqueCtrl_cmd_var = Eigen::VectorXd::Zero(this->num_joints);
-        in_JointTorqueCtrl_cmd.setName("in_" + this->robot_name + "_JointTorqueCtrl_cmd");
-        in_JointTorqueCtrl_cmd.doc("Input port for reading joint torque commands");
-        tc->ports()->addPort(in_JointTorqueCtrl_cmd);
-        in_JointTorqueCtrl_cmd_flow = RTT::NoData;
-
-        if (tc->getPort("out_gc_fdb"))
-        {
-            tc->ports()->removePort("out_gc_fdb");
-        }
-        out_gc_fdb_var = Eigen::VectorXd::Zero(this->num_joints);
-        out_gc_fdb.setName("out_" + this->robot_name + "_gc_fdb");
-        out_gc_fdb.doc("Output port for sending joint space gravity and coriolis");
-        out_gc_fdb.setDataSample(out_gc_fdb_var);
-        tc->ports()->addPort(out_gc_fdb);
-
-        if (tc->getPort("out_inertia_fdb"))
-        {
-            tc->ports()->removePort("out_inertia_fdb");
-        }
-        out_inertia_fdb_var = Eigen::MatrixXd::Zero(this->num_joints, this->num_joints);
-        out_inertia_fdb.setName("out_" + this->robot_name + "_inertia_fdb");
-        out_inertia_fdb.doc("Output port for sending joint space inertia matrix");
-        out_inertia_fdb.setDataSample(out_inertia_fdb_var);
-        tc->ports()->addPort(out_inertia_fdb);
-
-        if (tc->getPort("out_jointstate_fdb"))
-        {
-            tc->ports()->removePort("out_jointstate_fdb");
-        }
-        out_jointstate_fdb_var.position.resize(this->num_joints);
-        out_jointstate_fdb_var.velocity.resize(this->num_joints);
-        out_jointstate_fdb_var.effort.resize(this->num_joints);
-        for (unsigned int i = 0; i < this->num_joints; i++)
-        {
-            out_jointstate_fdb_var.position[i] = 0.0;
-            out_jointstate_fdb_var.velocity[i] = 0.0;
-            out_jointstate_fdb_var.effort[i] = 0.0;
-        }
-        out_jointstate_fdb.setName("out_" + this->robot_name + "_jointstate_fdb");
-        out_jointstate_fdb.doc("Output port for sending joint space state");
-        out_jointstate_fdb.setDataSample(out_jointstate_fdb_var);
-        tc->ports()->addPort(out_jointstate_fdb);
-
-
-        // Last action from the configuration side
-        this->setControlMode("JointPositionCtrl");
+        return RobotManipulatorIF::configure();
     }
     else
     {

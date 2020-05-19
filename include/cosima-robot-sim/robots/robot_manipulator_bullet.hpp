@@ -37,39 +37,52 @@
 #include <bullet/LinearMath/btVector3.h>
 #include <bullet/LinearMath/btQuaternion.h>
 
-#include "../api/b3_capi_wrapper_no_gui.hpp"
+// Robot Manipulator Interface includes
+#include "../robots/robot_manipulator_if.hpp"
 
-#include "robot_manipulator_internal.hpp"
+// Bullet-Specific includes
+#include "../simulator_interface/bullet/b3_capi_wrapper_no_gui.hpp"
+
+// ROS
+#include <sensor_msgs/JointState.h>
 
 namespace cosima
 {
+    class RobotManipulatorBullet : public RobotManipulatorIF
+    {
+    public:
+        RobotManipulatorBullet(const std::string &name, const unsigned int &model_id, std::shared_ptr<b3CApiWrapperNoGui> sim, RTT::TaskContext *tc);
 
-class RTTBulletRobotManipulatorSim : public RTT::TaskContext
-{
-public:
-  RTTBulletRobotManipulatorSim(std::string const &name);
+        bool configure();
+        void sense();
+        void act();
 
-  bool configureHook();
-  bool startHook();
-  void updateHook();
-  void stopHook();
-  void cleanupHook();
+        bool setControlMode(const std::string &controlMode);
+        bool setActiveKinematicChain(const std::vector<std::string> &jointNames);
+        void readFromOrocos();
+        void writeToOrocos();
 
-  int spawnRobotAtPose(const std::string &modelName, const std::string &modelURDF, const Eigen::VectorXf &t, const Eigen::VectorXf &r);
-  int spawnRobotAtPos(const std::string &modelName, const std::string &modelURDF, const double &x, const double &y, const double &z);
-  int spawnRobot(const std::string &modelName, const std::string &modelURDF);
-  void disconnect();
-  bool connect();
-  bool connectToExternallySpawnedRobot(const std::string &modelName, const unsigned int &modelId);
-  bool setControlMode(const std::string &modelName, const std::string &controlMode);
-  bool setActiveKinematicChain(const std::vector<std::string> &jointNames);
+    private:
+        std::shared_ptr<b3CApiWrapperNoGui> sim;
+        int robot_id;
 
-private:
-  std::shared_ptr<b3CApiWrapperNoGui> sim;
-  bool step;
+        int *joint_indices;
 
-  // std::map<unsigned int, std::shared_ptr<RobotManipulator>> map_robot_manipulators;
-  std::map<std::string, std::shared_ptr<RobotManipulator>> map_robot_manipulators;
-};
+        // Helpers
+        double *zero_forces;
+        double *max_forces;
+        double *zero_accelerations;
+        double *target_positions;
+
+        // Sense
+        double *q;
+        double *qd;
+        double *gc;
+        double *M;
+
+        // Act
+        double *cmd_trq;
+        double *cmd_pos;
+    };
 
 } // namespace cosima

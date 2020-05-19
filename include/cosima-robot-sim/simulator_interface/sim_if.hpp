@@ -26,45 +26,32 @@
 
 #pragma once
 
-#include <rtt/Port.hpp>
-#include <rtt/TaskContext.hpp>
 #include <string>
-
-#include <Eigen/Dense>
 #include <iostream>
 
-#include <bullet/LinearMath/btAlignedObjectArray.h>
-#include <bullet/LinearMath/btVector3.h>
-#include <bullet/LinearMath/btQuaternion.h>
+#include <Eigen/Dense>
 
-#include "api/b3_capi_wrapper_no_gui.hpp"
+// ROS
+#include <sensor_msgs/JointState.h>
 
 namespace cosima
 {
 
-class RTTBulletEmbedded : public RTT::TaskContext
-{
-public:
-  RTTBulletEmbedded(std::string const &name);
+    class SimulatorInterface
+    {
+    public:
+        SimulatorInterface();
 
-  bool configureHook();
-  bool startHook();
-  void updateHook();
-  void stopHook();
-  void cleanupHook();
+        virtual int spawnRobotAtPose(const std::string &modelName, const std::string &modelURDF, const Eigen::VectorXd &t, const Eigen::VectorXd &r) = 0;
+        virtual int spawnRobotAtPos(const std::string &modelName, const std::string &modelURDF, const double &x, const double &y, const double &z) = 0;
+        virtual int spawnRobot(const std::string &modelName, const std::string &modelURDF) = 0;
+        virtual void disconnect() = 0;
+        virtual bool connect() = 0;
+        virtual bool connectToExternallySpawnedRobot(const std::string &modelName, const unsigned int &modelId) = 0;
+        virtual bool isConnected() = 0;
 
-  int spawnModelAtPose(const std::string &modelName, const std::string &modelURDF, const Eigen::VectorXf &t, const Eigen::VectorXf &r);
-  int spawnModel(const std::string &modelName, const std::string &modelURDF);
-  void disconnect();
-  bool connect();
-  bool setGravityVector(const double x, const double y, const double z);
-  void resetSimulation();
-  int getIdFromModelName(const std::string &modelName);
-
-private:
-  std::shared_ptr<b3CApiWrapperNoGui> sim;
-  std::map<std::string, int> map_modelName_to_id;
-  std::vector<int> vec_model_ids; // Not sure if we really need this!
-};
+    protected:
+        bool is_connect_called;
+    };
 
 } // namespace cosima

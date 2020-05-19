@@ -26,45 +26,39 @@
 
 #pragma once
 
-#include <rtt/Port.hpp>
-#include <rtt/TaskContext.hpp>
 #include <string>
-
-#include <Eigen/Dense>
 #include <iostream>
 
-#include <bullet/LinearMath/btAlignedObjectArray.h>
-#include <bullet/LinearMath/btVector3.h>
-#include <bullet/LinearMath/btQuaternion.h>
+#include <Eigen/Dense>
 
-#include "api/b3_capi_wrapper_no_gui.hpp"
+// ROS Data Type includes
+#include <sensor_msgs/JointState.h>
+
+// Generic Simulator Interface includes
+#include "../sim_if.hpp"
+
+// Bullet-Specific Interface includes
+#include "../bullet/b3_capi_wrapper_no_gui.hpp"
 
 namespace cosima
 {
 
-class RTTBulletEmbedded : public RTT::TaskContext
-{
-public:
-  RTTBulletEmbedded(std::string const &name);
+    class BulletInterface : public SimulatorInterface
+    {
+    public:
+        BulletInterface();
 
-  bool configureHook();
-  bool startHook();
-  void updateHook();
-  void stopHook();
-  void cleanupHook();
+        int spawnRobotAtPose(const std::string &modelName, const std::string &modelURDF, const Eigen::VectorXd &t, const Eigen::VectorXd &r);
+        int spawnRobotAtPos(const std::string &modelName, const std::string &modelURDF, const double &x, const double &y, const double &z);
+        int spawnRobot(const std::string &modelName, const std::string &modelURDF);
+        void disconnect();
+        bool connect();
+        bool connectToExternallySpawnedRobot(const std::string &modelName, const unsigned int &modelId);
+        bool isConnected();
 
-  int spawnModelAtPose(const std::string &modelName, const std::string &modelURDF, const Eigen::VectorXf &t, const Eigen::VectorXf &r);
-  int spawnModel(const std::string &modelName, const std::string &modelURDF);
-  void disconnect();
-  bool connect();
-  bool setGravityVector(const double x, const double y, const double z);
-  void resetSimulation();
-  int getIdFromModelName(const std::string &modelName);
+        void stepSimulation();
 
-private:
-  std::shared_ptr<b3CApiWrapperNoGui> sim;
-  std::map<std::string, int> map_modelName_to_id;
-  std::vector<int> vec_model_ids; // Not sure if we really need this!
-};
+        std::shared_ptr<b3CApiWrapperNoGui> sim;
+    };
 
 } // namespace cosima

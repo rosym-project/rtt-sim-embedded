@@ -25,7 +25,7 @@
 # ============================================================
 
 cmake_minimum_required(VERSION 2.8.3)
-project(rtt-bullet-embedded)
+project(cosima-robot-sim)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 add_compile_options(-std=c++11)
@@ -199,11 +199,19 @@ include_directories(
 # add_executable(${PROJECT_NAME}_node src/rtt-bullet-embedded_node.cpp)
 
 orocos_component(${CMAKE_PROJECT_NAME}
-  ${PROJECT_SOURCE_DIR}/src/rtt_bullet_embedded.cpp
-  ${PROJECT_SOURCE_DIR}/src/api/b3_capi_wrapper_no_gui.cpp
-  ${PROJECT_SOURCE_DIR}/src/robots/rtt_bullet_robot_manipulator_sim.cpp
-  ${PROJECT_SOURCE_DIR}/src/robots/robot_manipulator_internal.cpp
-) # ...you may add multiple source files
+  # Bullet Interface
+  ${PROJECT_SOURCE_DIR}/src/simulator_interface/bullet/b3_capi_wrapper_no_gui.cpp
+  ${PROJECT_SOURCE_DIR}/src/simulator_interface/bullet/bullet_if.cpp
+  # Generic Simulator Interface
+  ${PROJECT_SOURCE_DIR}/src/simulator_interface/sim_if.cpp
+  # Generic Robot Interface
+  ${PROJECT_SOURCE_DIR}/src/robots/robot_manipulator_if.cpp
+  # Bullet Robot Interface
+  ${PROJECT_SOURCE_DIR}/src/robots/robot_manipulator_bullet.cpp
+  # Generic OROCOS RTT Component
+  ${PROJECT_SOURCE_DIR}/src/rtt_robot_manipulator_sim.cpp
+)
+
 # set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES COMPILE_DEFINITIONS RTT_COMPONENT)
 target_link_libraries(${CMAKE_PROJECT_NAME} ${EIGEN3_LIBRARIES} ${OROCOS-RTT_LIBRARIES} ${USE_OROCOS_LIBRARIES} ${BULLET_LIBRARIES}
 ${catkin_LIBRARIES}
