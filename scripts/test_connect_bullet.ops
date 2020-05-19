@@ -34,8 +34,8 @@ setActivity("robot",0.0001,10,ORO_SCHED_OTHER)
 # Currently, gazebo and bullet are supported.
 # When chosing bullet, make sure to run a bullet Shared Memory server in preface.
 # e.g.,
-# import pybullet as p
-# client = p.connect(p.GUI_SERVER,1234)
+# client = p.connect(p.GUI_SERVER)
+# p.setGravity(0, 0, -9.81, physicsClientId=client)
 # 
 # While gazebo updates the simulator indepedent of the chosen update rate,
 # bullet will be in-sync with the chosen update rate.
