@@ -86,12 +86,20 @@ void GazeboInterface::disconnect()
 
 bool GazeboInterface::connect()
 {
-    gazebo::printVersion();
-    if (gazebo::physics::get_world())
+    try
     {
-        this->is_connect_called = true;
-        PRELOG(Info) << "Connected to Gazebo" << RTT::endlog();
-        return true;
+        gazebo::printVersion();
+        if (gazebo::physics::get_world())
+        {
+            this->is_connect_called = true;
+            PRELOG(Info) << "Connected to Gazebo" << RTT::endlog();
+            return true;
+        }
+    }
+    catch (const std::exception &e)
+    {
+        PRELOG(Error) << "Could not connect, since the world pointer could not be retrived!" << RTT::endlog();
+        return false;
     }
     PRELOG(Error) << "Could not connect, since the world pointer could not be retrived!" << RTT::endlog();
     return false;

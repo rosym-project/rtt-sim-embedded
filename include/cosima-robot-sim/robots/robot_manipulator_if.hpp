@@ -55,7 +55,7 @@ namespace cosima
     public:
         RobotManipulatorIF(const std::string &name, RTT::TaskContext *tc);
 
-        bool configure();
+        virtual bool configure();
 
         virtual void sense() = 0;
         virtual void act() = 0;

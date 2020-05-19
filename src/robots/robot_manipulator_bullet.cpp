@@ -37,6 +37,7 @@ using namespace RTT;
 RobotManipulatorBullet::RobotManipulatorBullet(const std::string &name, const unsigned int &model_id, std::shared_ptr<b3CApiWrapperNoGui> sim, RTT::TaskContext *tc) : RobotManipulatorIF(name, tc)
 {
     this->sim = sim;
+    this->robot_id = model_id;
 }
 
 void RobotManipulatorBullet::sense()
@@ -149,7 +150,8 @@ void RobotManipulatorBullet::act()
             b3RobotSimulatorJointMotorArrayArgs mode_params(CONTROL_MODE_POSITION_VELOCITY_PD, this->num_joints);
             mode_params.m_jointIndices = this->joint_indices;
             mode_params.m_forces = this->max_forces;
-            mode_params.m_targetPositions = this->target_positions;
+            // Use current positions to avoid initial jumps
+            mode_params.m_targetPositions = this->q;
             PRELOG(Error, this->tc) << "Switching to JointPosCtrl" << RTT::endlog();
             sim->setJointMotorControlArray(this->robot_id, mode_params);
         }
@@ -172,14 +174,34 @@ void RobotManipulatorBullet::act()
         b3RobotSimulatorJointMotorArrayArgs _mode_params(CONTROL_MODE_POSITION_VELOCITY_PD, this->num_joints);
         _mode_params.m_jointIndices = this->joint_indices;
         _mode_params.m_forces = this->max_forces;
-        _mode_params.m_targetPositions = cmd_pos;
+        ///////////////////////////////////////////////////////////////////////////////
+        // TODO THINK ABOUT THE SEMANTIC REGARDING SENDING THE COMMANDS TO THE ROBOT //
+        ///////////////////////////////////////////////////////////////////////////////
+        if (this->in_JointPositionCtrl_cmd_flow != RTT::NewData)
+        {
+            _mode_params.m_targetPositions = this->q;
+        }
+        else
+        {
+            _mode_params.m_targetPositions = this->cmd_pos;
+        }
         sim->setJointMotorControlArray(this->robot_id, _mode_params);
     }
     else if (this->active_control_mode == ControlModes::JointTrqCtrl)
     {
         b3RobotSimulatorJointMotorArrayArgs _mode_params_trq(CONTROL_MODE_TORQUE, this->num_joints);
         _mode_params_trq.m_jointIndices = this->joint_indices;
-        _mode_params_trq.m_forces = cmd_trq;
+        ///////////////////////////////////////////////////////////////////////////////
+        // TODO THINK ABOUT THE SEMANTIC REGARDING SENDING THE COMMANDS TO THE ROBOT //
+        ///////////////////////////////////////////////////////////////////////////////
+        if (this->in_JointTorqueCtrl_cmd_flow != RTT::NewData)
+        {
+            _mode_params_trq.m_forces = this->gc;
+        }
+        else
+        {
+            _mode_params_trq.m_forces = this->cmd_trq;
+        }
         sim->setJointMotorControlArray(this->robot_id, _mode_params_trq);
     }
 }
@@ -313,6 +335,7 @@ bool RobotManipulatorBullet::configure()
     }
     else
     {
+        PRELOG(Error, this->tc) << "Bullet Simulator Interface seems to be not connected!" << RTT::endlog();
         return false;
     }
     return true;

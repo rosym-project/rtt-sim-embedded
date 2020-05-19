@@ -90,8 +90,6 @@ namespace cosima
     std::shared_ptr<GazeboInterface> gazebo_interface;
 #endif
 
-    bool step;
-
     // std::map<unsigned int, std::shared_ptr<RobotManipulatorIF>> map_robot_manipulators;
     std::map<std::string, std::shared_ptr<RobotManipulatorIF>> map_robot_manipulators;
   };

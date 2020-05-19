@@ -1,23 +1,24 @@
-import("rtt_bullet_embedded")
+import("cosima-robot-sim")
+
 # loadComponent("bullet","cosima::RTTBulletEmbedded")
 # setActivity("bullet",0.1,10,ORO_SCHED_OTHER)
 # bullet.connect()
 # bullet.configure()
 # bullet.spawnModel("kuka1", "/home/dwigand/code/cogimon/CoSimA/pyBullet/pyCompliantInteractionPlanning/gym_flexassembly/data/kuka-iiwa-7/model.urdf")
 
-loadComponent("bullet_robot","cosima::RTTBulletRobotManipulatorSim")
-# Faster than 1Kz, because reality is alsways fast :D
-setActivity("bullet_robot",0.0001,10,ORO_SCHED_OTHER)
-bullet_robot.connect()
-bullet_robot.spawnRobot("kuka1", "/home/dwigand/code/cogimon/CoSimA/pyBullet/pyCompliantInteractionPlanning/gym_flexassembly/data/kuka-iiwa-7/model.urdf")
-bullet_robot.spawnRobotAtPos("kuka2", "/home/dwigand/code/cogimon/CoSimA/pyBullet/pyCompliantInteractionPlanning/gym_flexassembly/data/kuka-iiwa-7/model.urdf", 1, 1, 0)
-# bullet_robot.connectToExternallySpawnedRobot("kuka1", 1)
-bullet_robot.configure()
-bullet_robot.step=true
+loadComponent("robot","cosima::RTTRobotManipulatorSim")
+# Faster than 1Kz, because reality is always fast :D
+setActivity("robot",0.0001,10,ORO_SCHED_OTHER)
+robot.connectBullet()
+robot.spawnRobot("kuka1", "/home/dwigand/code/cogimon/CoSimA/pyBullet/pyCompliantInteractionPlanning/gym_flexassembly/data/kuka-iiwa-7/model.urdf", "bullet")
+# robot.connectToExternallySpawnedRobot("kuka1", 1, "bullet")
+robot.configure()
 
-bullet_robot.setControlMode("kuka1", "JointTorqueCtrl")
+# robot.setControlMode("kuka1", "JointTorqueCtrl")
+robot.setControlMode("kuka1", "JointGravComp")
+# robot.setControlMode("kuka1", "JointPositionCtrl")
 
-bullet_robot.start
+robot.start
 
 
 # import pybullet as p

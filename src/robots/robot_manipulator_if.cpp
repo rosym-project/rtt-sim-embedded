@@ -48,11 +48,11 @@ RobotManipulatorIF::RobotManipulatorIF(const std::string &name, RTT::TaskContext
 
 bool RobotManipulatorIF::configure()
 {
-    if ((vec_joint_indices.size() <= 0) || (!this->tc))
+    if ((this->vec_joint_indices.size() <= 0) || (!this->tc))
     {
         return false;
     }
-    this->num_joints = vec_joint_indices.size();
+    this->num_joints = this->vec_joint_indices.size();
 
     // Add OROCOS RTT ports
     if (tc->getPort("in_JointPositionCtrl_cmd"))
