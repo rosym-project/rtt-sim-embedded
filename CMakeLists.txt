@@ -52,6 +52,15 @@ endif()
 include(${OROCOS-RTT_USE_FILE_PATH}/UseOROCOS-RTT.cmake)
 
 
+find_package(gazebo REQUIRED)
+if(GAZEBO_VERSION)
+  if(${GAZEBO_VERSION} GREATER 6)
+      add_definitions(-DGAZEBO_GREATER_6)
+  endif()
+endif()
+include_directories(${GAZEBO_INCLUDE_DIRS})
+
+
 find_package(Bullet7 REQUIRED)
 # find_package(Bullet COMPONENTS BulletMath BulletCollision MODULE)
 # find_package(Bullet MODULE)
@@ -202,19 +211,23 @@ orocos_component(${CMAKE_PROJECT_NAME}
   # Bullet Interface
   ${PROJECT_SOURCE_DIR}/src/simulator_interface/bullet/b3_capi_wrapper_no_gui.cpp
   ${PROJECT_SOURCE_DIR}/src/simulator_interface/bullet/bullet_if.cpp
+  # Gazebo Interface
+  ${PROJECT_SOURCE_DIR}/src/simulator_interface/gazebo/gazebo_if.cpp
   # Generic Simulator Interface
   ${PROJECT_SOURCE_DIR}/src/simulator_interface/sim_if.cpp
   # Generic Robot Interface
   ${PROJECT_SOURCE_DIR}/src/robots/robot_manipulator_if.cpp
   # Bullet Robot Interface
   ${PROJECT_SOURCE_DIR}/src/robots/robot_manipulator_bullet.cpp
+  # Gazebo Robot Interface
+  ${PROJECT_SOURCE_DIR}/src/robots/robot_manipulator_gazebo.cpp
   # Generic OROCOS RTT Component
   ${PROJECT_SOURCE_DIR}/src/rtt_robot_manipulator_sim.cpp
 )
 
 # set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES COMPILE_DEFINITIONS RTT_COMPONENT)
 target_link_libraries(${CMAKE_PROJECT_NAME} ${EIGEN3_LIBRARIES} ${OROCOS-RTT_LIBRARIES} ${USE_OROCOS_LIBRARIES} ${BULLET_LIBRARIES}
-${catkin_LIBRARIES}
+${GAZEBO_LIBRARIES} ${catkin_LIBRARIES}
 # Bullet2FileLoader
 # Bullet3Collision
 # Bullet3Common

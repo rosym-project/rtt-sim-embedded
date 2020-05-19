@@ -33,6 +33,10 @@
 #include "../include/cosima-robot-sim/robots/robot_manipulator_bullet.hpp"
 #endif
 
+#ifndef DISABLE_GAZEBO
+#include "../include/cosima-robot-sim/robots/robot_manipulator_gazebo.hpp"
+#endif
+
 #define PRELOG(X) (RTT::log(RTT::X) << "[" << this->getName() << "] ")
 
 using namespace cosima;
@@ -45,6 +49,13 @@ RTTRobotManipulatorSim::RTTRobotManipulatorSim(std::string const &name) : RTT::T
     this->bullet_interface = std::shared_ptr<BulletInterface>(new BulletInterface());
     addOperation("connectBullet", &RTTRobotManipulatorSim::connectBullet, this);
     addOperation("disconnectBullet", &RTTRobotManipulatorSim::disconnectBullet, this);
+    _at_least_one_simulator = true;
+#endif
+
+#ifndef DISABLE_GAZEBO
+    this->gazebo_interface = std::shared_ptr<GazeboInterface>(new GazeboInterface());
+    addOperation("connectGazebo", &RTTRobotManipulatorSim::connectGazebo, this);
+    addOperation("disconnectGazebo", &RTTRobotManipulatorSim::disconnectGazebo, this);
     _at_least_one_simulator = true;
 #endif
 
@@ -96,6 +107,18 @@ void RTTRobotManipulatorSim::disconnectBullet()
 }
 #endif
 
+#ifndef DISABLE_GAZEBO
+bool RTTRobotManipulatorSim::connectGazebo()
+{
+    return this->gazebo_interface->connect();
+}
+
+void RTTRobotManipulatorSim::disconnectGazebo()
+{
+    this->gazebo_interface->disconnect();
+}
+#endif
+
 bool RTTRobotManipulatorSim::configureHook()
 {
     for (auto const &e : map_robot_manipulators)
@@ -115,7 +138,11 @@ bool RTTRobotManipulatorSim::startHook()
     bool ret_bullet = this->bullet_interface->isConnected();
     ret = ret || ret_bullet;
 #endif
-    // bool ret_gazebo = gazebo_interface->isConnected();
+
+#ifndef DISABLE_GAZEBO
+    bool ret_gazebo = this->gazebo_interface->isConnected();
+    ret = ret || ret_gazebo;
+#endif
 
     return ret;
 }
@@ -148,6 +175,10 @@ void RTTRobotManipulatorSim::cleanupHook()
 #ifndef DISABLE_BULLET
     this->bullet_interface->disconnect();
 #endif
+
+#ifndef DISABLE_GAZEBO
+    this->gazebo_interface->disconnect();
+#endif
 }
 
 bool RTTRobotManipulatorSim::connectToExternallySpawnedRobot(const std::string &modelName, const unsigned int &modelId, const std::string &simulator)
@@ -159,6 +190,18 @@ bool RTTRobotManipulatorSim::connectToExternallySpawnedRobot(const std::string &
         {
             // Create Robot
             std::shared_ptr<RobotManipulatorIF> robot = std::shared_ptr<RobotManipulatorIF>(new RobotManipulatorBullet(modelName, modelId, this->bullet_interface->sim, this));
+            map_robot_manipulators[modelName] = robot;
+        }
+    }
+#endif
+
+#ifndef DISABLE_GAZEBO
+    if (simulator.compare("gazebo") == 0)
+    {
+        if (this->gazebo_interface->connectToExternallySpawnedRobot(modelName, modelId))
+        {
+            // Create Robot
+            std::shared_ptr<RobotManipulatorIF> robot = std::shared_ptr<RobotManipulatorIF>(new RobotManipulatorGazebo(modelName, modelId, this));
             map_robot_manipulators[modelName] = robot;
         }
     }
@@ -176,6 +219,22 @@ int RTTRobotManipulatorSim::spawnRobotAtPose(const std::string &modelName, const
         {
             // Create Robot
             map_robot_manipulators[modelName] = std::shared_ptr<RobotManipulatorIF>(new RobotManipulatorBullet(modelName, ret_id, this->bullet_interface->sim, this));
+        }
+        else
+        {
+            return false;
+        }
+    }
+#endif
+
+#ifndef DISABLE_GAZEBO
+    if (simulator.compare("gazebo") == 0)
+    {
+        int ret_id = this->gazebo_interface->spawnRobotAtPose(modelName, modelURDF, t, r);
+        if (ret_id >= 0)
+        {
+            // Create Robot
+            map_robot_manipulators[modelName] = std::shared_ptr<RobotManipulatorIF>(new RobotManipulatorGazebo(modelName, ret_id, this));
         }
         else
         {

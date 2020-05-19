@@ -122,7 +122,7 @@ void RobotManipulatorBullet::act()
         if ((this->requested_control_mode == ControlModes::JointTrqCtrl) || (this->requested_control_mode == ControlModes::JointGravComp))
         {
             // Only if we had a torque-unrelated control mode active
-            if ((this->active_control_mode != ControlModes::JointTrqCtrl) || (this->active_control_mode != ControlModes::JointGravComp))
+            if ((this->active_control_mode != ControlModes::JointTrqCtrl) && (this->active_control_mode != ControlModes::JointGravComp))
             {
                 // Unlocking the breaks
                 b3RobotSimulatorJointMotorArrayArgs mode_params(CONTROL_MODE_VELOCITY, this->num_joints);
@@ -162,24 +162,25 @@ void RobotManipulatorBullet::act()
     ///////////////////////////////////////////////////////////////
     if (this->active_control_mode == ControlModes::JointGravComp)
     {
-        b3RobotSimulatorJointMotorArrayArgs mode_params_trq(CONTROL_MODE_TORQUE, this->num_joints);
-        mode_params_trq.m_jointIndices = this->joint_indices;
-        mode_params_trq.m_forces = gc;
-        sim->setJointMotorControlArray(this->robot_id, mode_params_trq);
+        b3RobotSimulatorJointMotorArrayArgs _mode_params_trq(CONTROL_MODE_TORQUE, this->num_joints);
+        _mode_params_trq.m_jointIndices = this->joint_indices;
+        _mode_params_trq.m_forces = gc;
+        sim->setJointMotorControlArray(this->robot_id, _mode_params_trq);
     }
     else if (this->active_control_mode == ControlModes::JointPosCtrl)
     {
-        b3RobotSimulatorJointMotorArrayArgs mode_params_trq(CONTROL_MODE_TORQUE, this->num_joints);
-        mode_params_trq.m_jointIndices = this->joint_indices;
-        mode_params_trq.m_forces = cmd_pos;
-        sim->setJointMotorControlArray(this->robot_id, mode_params_trq);
+        b3RobotSimulatorJointMotorArrayArgs _mode_params(CONTROL_MODE_POSITION_VELOCITY_PD, this->num_joints);
+        _mode_params.m_jointIndices = this->joint_indices;
+        _mode_params.m_forces = this->max_forces;
+        _mode_params.m_targetPositions = cmd_pos;
+        sim->setJointMotorControlArray(this->robot_id, _mode_params);
     }
     else if (this->active_control_mode == ControlModes::JointTrqCtrl)
     {
-        b3RobotSimulatorJointMotorArrayArgs mode_params_trq(CONTROL_MODE_TORQUE, this->num_joints);
-        mode_params_trq.m_jointIndices = this->joint_indices;
-        mode_params_trq.m_forces = cmd_trq;
-        sim->setJointMotorControlArray(this->robot_id, mode_params_trq);
+        b3RobotSimulatorJointMotorArrayArgs _mode_params_trq(CONTROL_MODE_TORQUE, this->num_joints);
+        _mode_params_trq.m_jointIndices = this->joint_indices;
+        _mode_params_trq.m_forces = cmd_trq;
+        sim->setJointMotorControlArray(this->robot_id, _mode_params_trq);
     }
 }
 

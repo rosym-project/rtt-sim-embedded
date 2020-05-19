@@ -44,6 +44,11 @@
 #include "simulator_interface/bullet/bullet_if.hpp"
 #endif
 
+#ifndef DISABLE_GAZEBO
+// Gazebo-Specific Simulator includes
+#include "simulator_interface/gazebo/gazebo_if.hpp"
+#endif
+
 namespace cosima
 {
 
@@ -71,16 +76,20 @@ namespace cosima
     void disconnectBullet();
 #endif
 
-    // #ifndef DISABLE_GAZEBO
-    //     bool connectGazebo();
-    //     void disconnectGazebo();
-    // #endif
+#ifndef DISABLE_GAZEBO
+    bool connectGazebo();
+    void disconnectGazebo();
+#endif
 
   private:
 #ifndef DISABLE_BULLET
     std::shared_ptr<BulletInterface> bullet_interface;
 #endif
-    // std::shared_ptr<GazeboInterface> gazebo_interface;
+
+#ifndef DISABLE_GAZEBO
+    std::shared_ptr<GazeboInterface> gazebo_interface;
+#endif
+
     bool step;
 
     // std::map<unsigned int, std::shared_ptr<RobotManipulatorIF>> map_robot_manipulators;
