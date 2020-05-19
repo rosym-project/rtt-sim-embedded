@@ -183,6 +183,11 @@ void RTTRobotManipulatorSim::cleanupHook()
 
 bool RTTRobotManipulatorSim::connectToExternallySpawnedRobot(const std::string &modelName, const unsigned int &modelId, const std::string &simulator)
 {
+    if (map_robot_manipulators.count(modelName))
+    {
+        PRELOG(Warning) << "A robot with this name (" << modelName << ") is already registered!" << RTT::endlog();
+        return false;
+    }
 #ifndef DISABLE_BULLET
     if (simulator.compare("bullet") == 0)
     {
@@ -211,6 +216,11 @@ bool RTTRobotManipulatorSim::connectToExternallySpawnedRobot(const std::string &
 
 int RTTRobotManipulatorSim::spawnRobotAtPose(const std::string &modelName, const std::string &modelURDF, const Eigen::VectorXd &t, const Eigen::VectorXd &r, const std::string &simulator)
 {
+    if (map_robot_manipulators.count(modelName))
+    {
+        PRELOG(Warning) << "A robot with this name (" << modelName << ") is already registered!" << RTT::endlog();
+        return false;
+    }
 #ifndef DISABLE_BULLET
     if (simulator.compare("bullet") == 0)
     {
@@ -247,6 +257,11 @@ int RTTRobotManipulatorSim::spawnRobotAtPose(const std::string &modelName, const
 
 int RTTRobotManipulatorSim::spawnRobotAtPos(const std::string &modelName, const std::string &modelURDF, const Eigen::VectorXd &pos, const std::string &simulator)
 {
+    if (map_robot_manipulators.count(modelName))
+    {
+        PRELOG(Warning) << "A robot with this name (" << modelName << ") is already registered!" << RTT::endlog();
+        return false;
+    }
     Eigen::Vector4d baseOrientation = Eigen::Vector4d::Zero();
     baseOrientation(0) = 1;
     return spawnRobotAtPose(modelName, modelURDF, pos, baseOrientation, simulator);
@@ -254,6 +269,11 @@ int RTTRobotManipulatorSim::spawnRobotAtPos(const std::string &modelName, const 
 
 int RTTRobotManipulatorSim::spawnRobot(const std::string &modelName, const std::string &modelURDF, const std::string &simulator)
 {
+    if (map_robot_manipulators.count(modelName))
+    {
+        PRELOG(Warning) << "A robot with this name (" << modelName << ") is already registered!" << RTT::endlog();
+        return false;
+    }
     Eigen::Vector3d t = Eigen::Vector3d::Zero();
     Eigen::Vector4d q = Eigen::Vector4d::Zero();
     q(0) = 1;
