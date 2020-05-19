@@ -2,7 +2,9 @@
  *
  * This file is a part of CoSiMA (CogIMon) project
  *
- * Copyright (C) 2020 by Dennis Leroy Wigand <dwigand@techfak.uni-bielefeld.de>
+ * Copyright (C) 2020 by Dennis Leroy Wigand <dwigand@techfak.uni-bielefeld.de>,
+ *                       Enrico Mingo Hoffman <enrico.mingo@iit.it>,
+ *                       Pouya Mohammadi <https://github.com/Pouya-moh>
  *
  * This file may be licensed under the terms of the
  * GNU Lesser General Public License Version 3 (the ``LGPL''),
