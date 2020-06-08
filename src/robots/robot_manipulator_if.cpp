@@ -38,7 +38,7 @@ RobotManipulatorIF::RobotManipulatorIF(const std::string &name, RTT::TaskContext
 {
     // Initialize
     this->robot_name = name;
-    this->active_control_mode = ControlModes::JointGravComp;
+    this->active_control_mode = ControlModes::JointPosCtrl;
     this->requested_control_mode = ControlModes::JointPosCtrl;
 
     this->tc = tc;
@@ -114,6 +114,6 @@ bool RobotManipulatorIF::configure()
     tc->ports()->addPort(out_jointstate_fdb);
 
     // Last action from the configuration side
-    this->setControlMode("JointPositionCtrl");
+    // this->setControlMode("JointPositionCtrl");
     return true;
 }

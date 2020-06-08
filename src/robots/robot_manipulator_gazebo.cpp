@@ -353,7 +353,15 @@ bool RobotManipulatorGazebo::configure()
     world_end = gazebo::event::Events::ConnectWorldUpdateEnd(
         boost::bind(&RobotManipulatorGazebo::WorldUpdateEnd, this));
 
-    return RobotManipulatorIF::configure();
+    
+    this->gazebo_position_joint_controller->Reset();
+    for (unsigned int i = 0; i < this->vec_active_joints.size(); i++)
+    {
+        this->gazebo_position_joint_controller->SetPositionPID(this->vec_active_joints[i]->GetScopedName(), gazebo::common::PID(100, 0.1, 5)); // TODO
+    }
 
-    return true;
+    this->active_control_mode = ControlModes::JointPosCtrl;
+    this->requested_control_mode = ControlModes::JointPosCtrl;
+
+    return RobotManipulatorIF::configure();
 }

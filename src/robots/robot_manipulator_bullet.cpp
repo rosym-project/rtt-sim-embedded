@@ -331,6 +331,17 @@ bool RobotManipulatorBullet::configure()
             PRELOG(Error, this->tc) << "joint_indices[" << i << "] = " << joint_indices[i] << RTT::endlog();
         }
 
+        b3RobotSimulatorJointMotorArrayArgs _mode_params(CONTROL_MODE_POSITION_VELOCITY_PD, this->num_joints);
+        _mode_params.m_jointIndices = this->joint_indices;
+        _mode_params.m_forces = this->max_forces;
+        // Use current positions to avoid initial jumps
+        _mode_params.m_targetPositions = this->q;
+        PRELOG(Error, this->tc) << "Switching to JointPosCtrl" << RTT::endlog();
+        sim->setJointMotorControlArray(this->robot_id, _mode_params);
+
+        this->active_control_mode = ControlModes::JointPosCtrl;
+        this->requested_control_mode = ControlModes::JointPosCtrl;
+
         return RobotManipulatorIF::configure();
     }
     else
