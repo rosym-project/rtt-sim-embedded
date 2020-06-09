@@ -52,3 +52,6 @@ robot.configure()
 robot.setControlMode("kuka1", "JointGravComp")
 # Start the component to exchange data with OROCOS RTT and the simulators.
 robot.start()
+
+
+# catkin build -DCMAKE_BUILD_TYPE=DEBUG -DOROCOS-RTT_DIR=/home/dwigand/citk/systems/cogimon-minimal-nightly/lib/cmake/orocos-rtt -DBullet7_DIR=/home/dwigand/citk/systems/cogimon-minimal-nightly/lib/cmake/bullet cosima-robot-sim -Dorocos_kdl_DIR=/home/dwigand/citk/systems/cogimon-minimal-nightly/share/orocos_kdl -Dkdl_parser_DIR=/home/dwigand/code/cogimon/CoSimA/ros-cosima-ws/devel/share/kdl_parser

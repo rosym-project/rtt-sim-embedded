@@ -52,6 +52,14 @@ endif()
 include(${OROCOS-RTT_USE_FILE_PATH}/UseOROCOS-RTT.cmake)
 
 
+### PROBLEM WITH ROS (KDL VERSION) INCONSISTENCY TODO SOLVE!
+
+### find_package(orocos_kdl REQUIRED)
+SET(orocos_kdl_LIBRARIES /home/dwigand/citk/systems/cogimon-minimal-nightly/lib/liborocos-kdl.so.1.4)
+include_directories(BEFORE SYSTEM /home/dwigand/citk/systems/cogimon-minimal-nightly/include/kdl)
+link_directories(/home/dwigand/citk/systems/cogimon-minimal-nightly/lib/)
+
+
 find_package(gazebo REQUIRED)
 if(GAZEBO_VERSION)
   if(${GAZEBO_VERSION} GREATER 6)
@@ -187,6 +195,7 @@ catkin_package(
 ## Your package locations should be listed before other locations
 include_directories(
   include
+  ${orocos_kdl_INCLUDE_DIRS}
   ${catkin_INCLUDE_DIRS}
   ${USE_OROCOS_INCLUDE_DIRS}
   ${OROCOS-RTT_INCLUDE_DIRS}
@@ -227,7 +236,7 @@ orocos_component(${CMAKE_PROJECT_NAME}
 
 # set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES COMPILE_DEFINITIONS RTT_COMPONENT)
 target_link_libraries(${CMAKE_PROJECT_NAME} ${EIGEN3_LIBRARIES} ${OROCOS-RTT_LIBRARIES} ${USE_OROCOS_LIBRARIES} ${BULLET_LIBRARIES}
-${GAZEBO_LIBRARIES} ${catkin_LIBRARIES}
+${GAZEBO_LIBRARIES} ${orocos_kdl_LIBRARIES} ${catkin_LIBRARIES}
 # Bullet2FileLoader
 # Bullet3Collision
 # Bullet3Common

@@ -284,7 +284,17 @@ bool RobotManipulatorBullet::configure()
                 map_joint_names_2_indices[jointInfo.m_jointName] = qIndex;
                 vec_joint_indices.push_back(qIndex);
             }
+
+            // Configure Collision
+            int collisionFilterGroup_kuka = 0x10;
+            int collisionFilterMask_kuka = 0x1;
+            sim->setCollisionFilterGroupMask(this->robot_id, i-1, collisionFilterGroup_kuka, collisionFilterMask_kuka);
+            // i-1 or also i = _num_Joints - 1?
+            PRELOG(Error, this->tc) << ">>>>> " << jointInfo.m_jointName << ", index " << jointInfo.m_jointIndex << RTT::endlog();
         }
+
+        // Add force torque sensor at EEF (i 8, m_jointIndex 8, m_jointName iiwa7_joint_ee, m_parentIndex 7)
+        sim->enableJointForceTorqueSensor(this->robot_id, _num_joints - 1, true); // Attach to last link
 
         this->num_joints = vec_joint_indices.size();
         PRELOG(Error, this->tc) << "this->num_joints " << this->num_joints << RTT::endlog();
