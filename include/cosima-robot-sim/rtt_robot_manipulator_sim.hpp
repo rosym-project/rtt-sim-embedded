@@ -71,6 +71,10 @@ namespace cosima
     bool setControlMode(const std::string &modelName, const std::string &controlMode);
     bool setActiveKinematicChain(const std::vector<std::string> &jointNames);
 
+    bool defineKinematicChain(const std::string &modelName, const std::string &urdf, const std::string &chain_root_link_name, const std::string &chain_tip_link_name);
+
+    bool setBasePosition(const std::string &modelName, const double& x, const double& y, const double& z);
+
 #ifndef DISABLE_BULLET
     bool connectBullet();
     void disconnectBullet();

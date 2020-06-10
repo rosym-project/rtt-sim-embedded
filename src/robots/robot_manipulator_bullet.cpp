@@ -262,44 +262,109 @@ bool RobotManipulatorBullet::configure()
         sim->syncBodies();
 
         // Get number of joints
-        int _num_joints = sim->getNumJoints(this->robot_id);
-        if (_num_joints <= 0)
+        int _num_bullet_joints = sim->getNumJoints(this->robot_id);
+        if (_num_bullet_joints <= 0)
         {
-            PRELOG(Error, this->tc) << "The associated object is not a robot, since it has " << _num_joints << " joints!" << RTT::endlog();
+            PRELOG(Error, this->tc) << "The associated object is not a robot, since it has " << _num_bullet_joints << " joints!" << RTT::endlog();
             this->num_joints = -1;
             return false;
         }
 
-        // Get motor indices (filter fixed joint types)
         map_joint_names_2_indices.clear();
         vec_joint_indices.clear();
-        for (unsigned int i = 0; i < _num_joints; i++)
+
+        if ((this->kdl_chain.getNrOfJoints() > 0) && (this->kdl_chain.getNrOfSegments() > 0))
         {
-            b3JointInfo jointInfo;
-            sim->getJointInfo(this->robot_id, i, &jointInfo);
-            int qIndex = jointInfo.m_jointIndex;
-            if ((qIndex > -1) && (jointInfo.m_jointType != eFixedType))
+            // Select joints accordingly!
+            for (unsigned int i = 0; i < this->kdl_chain.segments.size(); i++)
             {
-                PRELOG(Error, this->tc) << "Motorname " << jointInfo.m_jointName << ", index " << jointInfo.m_jointIndex << RTT::endlog();
-                map_joint_names_2_indices[jointInfo.m_jointName] = qIndex;
-                vec_joint_indices.push_back(qIndex);
+                PRELOG(Error, this->tc) << i << " KDL Segmentname " << this->kdl_chain.segments[i].getName() << ", Jointname " << this->kdl_chain.segments[i].getJoint().getName() << RTT::endlog();
+                // Ignore fixed joints
+                if (this->kdl_chain.segments[i].getJoint().getType() == KDL::Joint::None)
+                {
+                    continue;
+                }
+
+                // Get bullet joint id for this->kdl_chain.segments[i].getJoint().getName(). A lot of times it matches, but just to be sure.
+                bool _found_bullet_joint_for_kdl_joint = false;
+                for (unsigned int j = 0; j < _num_bullet_joints; j++)
+                {
+                    b3JointInfo jointInfo;
+                    sim->getJointInfo(this->robot_id, j, &jointInfo);
+                    // Ignore fixed joints
+                    if ((jointInfo.m_jointIndex > -1) && (jointInfo.m_jointType != eFixedType))
+                    {
+                        std::string _bullet_name = jointInfo.m_jointName;
+                        if (this->kdl_chain.segments[i].getJoint().getName().compare(_bullet_name) == 0)
+                        {
+                            PRELOG(Error, this->tc) << "[KDL+BULLET] Found joint Motorname " << jointInfo.m_jointName << " at index " << jointInfo.m_jointIndex << RTT::endlog();
+                            map_joint_names_2_indices[jointInfo.m_jointName] = jointInfo.m_jointIndex;
+                            vec_joint_indices.push_back(jointInfo.m_jointIndex);
+                            _found_bullet_joint_for_kdl_joint = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (!_found_bullet_joint_for_kdl_joint)
+                {
+                    PRELOG(Error, this->tc) << "KDL joint name " << this->kdl_chain.segments[i].getJoint().getName() << " not found in bullet joints." << RTT::endlog();
+                    return false;
+                }
             }
-
-            // Configure Collision
-            int collisionFilterGroup_kuka = 0x10;
-            int collisionFilterMask_kuka = 0x1;
-            sim->setCollisionFilterGroupMask(this->robot_id, i-1, collisionFilterGroup_kuka, collisionFilterMask_kuka);
-            // i-1 or also i = _num_Joints - 1?
-            PRELOG(Error, this->tc) << ">>>>> " << jointInfo.m_jointName << ", index " << jointInfo.m_jointIndex << RTT::endlog();
         }
-
-        // Add force torque sensor at EEF (i 8, m_jointIndex 8, m_jointName iiwa7_joint_ee, m_parentIndex 7)
-        sim->enableJointForceTorqueSensor(this->robot_id, _num_joints - 1, true); // Attach to last link
+        else
+        {
+            // Use all non-fixed bullet joints if no KDL chain is provided
+            for (unsigned int i = 0; i < _num_bullet_joints; i++)
+            {
+                b3JointInfo jointInfo;
+                sim->getJointInfo(this->robot_id, i, &jointInfo);
+                int qIndex = jointInfo.m_jointIndex;
+                if ((qIndex > -1) && (jointInfo.m_jointType != eFixedType))
+                {
+                    PRELOG(Error, this->tc) << "[BULLET ONLY] joint Motorname " << jointInfo.m_jointName << " at index " << jointInfo.m_jointIndex << RTT::endlog();
+                    map_joint_names_2_indices[jointInfo.m_jointName] = qIndex;
+                    vec_joint_indices.push_back(qIndex);
+                }
+            }
+        }
 
         this->num_joints = vec_joint_indices.size();
         PRELOG(Error, this->tc) << "this->num_joints " << this->num_joints << RTT::endlog();
 
-        // Here I should probably also check the order of the joints for the command order TODO
+        // Change bullet collision group
+        for (unsigned int i = 0; i < _num_bullet_joints; i++)
+        {
+            // Configure Collision
+            int collisionFilterGroup_kuka = 0x10;
+            int collisionFilterMask_kuka = 0x1;
+            PRELOG(Error, this->tc) << "Setting collision for bullet link " << i << RTT::endlog();
+            sim->setCollisionFilterGroupMask(this->robot_id, i, collisionFilterGroup_kuka, collisionFilterMask_kuka);
+        }
+
+        // Add force torque sensor at EEF (i 8, m_jointIndex 8, m_jointName iiwa7_joint_ee, m_parentIndex 7)
+        PRELOG(Error, this->tc) << "Attaching F/T sensor to link idx " << (this->num_joints - 1) << " at bullet idx " << this->vec_joint_indices[this->num_joints - 1] << RTT::endlog();
+        sim->enableJointForceTorqueSensor(this->robot_id, this->vec_joint_indices[this->num_joints - 1], true); // Attach to last link
+
+        // // Show debug line to see where the F/T was attached!
+        // b3RobotSimulatorAddUserDebugLineArgs _dLine_args;
+        // _dLine_args.m_parentObjectUniqueId = this->robot_id;
+        // _dLine_args.m_parentLinkIndex = this->vec_joint_indices[this->num_joints - 1];
+        // _dLine_args.m_colorRGB[0] = 0.1;
+        // _dLine_args.m_colorRGB[1] = 1.0;
+        // _dLine_args.m_colorRGB[2] = 1.0;
+        // _dLine_args.m_lineWidth = 2.0;
+
+        // double* _from_xyz = new double[3];
+        // _from_xyz[0] = 0.0;
+        // _from_xyz[1] = 0.0;
+        // _from_xyz[2] = 0.0;
+        // double* _to_xyz = new double[3];
+        // _to_xyz[0] = 0.0;
+        // _to_xyz[1] = 1.0;
+        // _to_xyz[2] = 0.0;
+        // sim->addUserDebugLine(_from_xyz, _to_xyz, _dLine_args);
 
         // Initialize helper variables
         this->joint_indices = new int[this->num_joints];
@@ -338,7 +403,7 @@ bool RobotManipulatorBullet::configure()
             this->cmd_pos[i] = 0.0;
 
             // sim->resetJointState(this->robot_id, this->joint_indices[i], 0.0);
-            PRELOG(Error, this->tc) << "joint_indices[" << i << "] = " << joint_indices[i] << RTT::endlog();
+            PRELOG(Error, this->tc) << "Resetting joint [" << i << "] = " << this->joint_indices[i] << RTT::endlog();
         }
 
         b3RobotSimulatorJointMotorArrayArgs _mode_params(CONTROL_MODE_POSITION_VELOCITY_PD, this->num_joints);
@@ -360,4 +425,24 @@ bool RobotManipulatorBullet::configure()
         return false;
     }
     return true;
+}
+
+bool RobotManipulatorBullet::setBasePosition(const double& x, const double& y, const double& z)
+{
+    if (sim->isConnected())
+    {
+        btVector3 _basePosition;
+        btQuaternion _baseOrientation;
+        bool ret = sim->getBasePositionAndOrientation(this->robot_id, _basePosition, _baseOrientation);
+        if (!ret)
+        {
+            return false;
+        }
+        _basePosition = btVector3(x,y,z);
+        return sim->resetBasePositionAndOrientation(this->robot_id, _basePosition, _baseOrientation);
+    }
+    else
+    {
+        return false;
+    }
 }

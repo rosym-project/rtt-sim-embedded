@@ -59,6 +59,10 @@ SET(orocos_kdl_LIBRARIES /home/dwigand/citk/systems/cogimon-minimal-nightly/lib/
 include_directories(BEFORE SYSTEM /home/dwigand/citk/systems/cogimon-minimal-nightly/include/kdl)
 link_directories(/home/dwigand/citk/systems/cogimon-minimal-nightly/lib/)
 
+SET(kdl_parser_LIBRARIES /home/dwigand/code/cogimon/CoSimA/ros-cosima-ws/devel/.private/kdl_parser/lib/libkdl_parser.so)
+include_directories(BEFORE SYSTEM /home/dwigand/code/cogimon/CoSimA/ros-cosima-ws/src/kdl_parser/kdl_parser/include/kdl_parser)
+link_directories(/home/dwigand/code/cogimon/CoSimA/ros-cosima-ws/devel/.private/kdl_parser/lib/)
+
 
 find_package(gazebo REQUIRED)
 if(GAZEBO_VERSION)
@@ -199,6 +203,7 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
   ${USE_OROCOS_INCLUDE_DIRS}
   ${OROCOS-RTT_INCLUDE_DIRS}
+  ${kdl_parser_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
@@ -236,7 +241,7 @@ orocos_component(${CMAKE_PROJECT_NAME}
 
 # set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES COMPILE_DEFINITIONS RTT_COMPONENT)
 target_link_libraries(${CMAKE_PROJECT_NAME} ${EIGEN3_LIBRARIES} ${OROCOS-RTT_LIBRARIES} ${USE_OROCOS_LIBRARIES} ${BULLET_LIBRARIES}
-${GAZEBO_LIBRARIES} ${orocos_kdl_LIBRARIES} ${catkin_LIBRARIES}
+${GAZEBO_LIBRARIES} ${orocos_kdl_LIBRARIES} ${kdl_parser_LIBRARIES} ${catkin_LIBRARIES}
 # Bullet2FileLoader
 # Bullet3Collision
 # Bullet3Common

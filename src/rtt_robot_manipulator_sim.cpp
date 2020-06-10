@@ -71,6 +71,36 @@ RTTRobotManipulatorSim::RTTRobotManipulatorSim(std::string const &name) : RTT::T
         addOperation("connectToExternallySpawnedRobot", &RTTRobotManipulatorSim::connectToExternallySpawnedRobot, this, RTT::OwnThread);
 
         addOperation("spawnRobotAtPos", &RTTRobotManipulatorSim::spawnRobotAtPos, this, RTT::OwnThread);
+
+        addOperation("defineKinematicChain", &RTTRobotManipulatorSim::defineKinematicChain, this, RTT::OwnThread);
+
+        addOperation("setBasePosition", &RTTRobotManipulatorSim::setBasePosition, this, RTT::OwnThread);
+    }
+}
+
+bool RTTRobotManipulatorSim::setBasePosition(const std::string &modelName, const double& x, const double& y, const double& z)
+{
+    if (map_robot_manipulators.count(modelName))
+    {
+        return map_robot_manipulators[modelName]->setBasePosition(x, y, z);
+    }
+    else
+    {
+        PRELOG(Error) << "Robot " << modelName << " cannot be found!" << RTT::endlog();
+        return false;
+    }
+}
+
+bool RTTRobotManipulatorSim::defineKinematicChain(const std::string &modelName, const std::string &urdf, const std::string &chain_root_link_name, const std::string &chain_tip_link_name)
+{
+    if (map_robot_manipulators.count(modelName))
+    {
+        return map_robot_manipulators[modelName]->defineKinematicChain(urdf, chain_root_link_name, chain_tip_link_name);
+    }
+    else
+    {
+        PRELOG(Error) << "Robot " << modelName << " cannot be found!" << RTT::endlog();
+        return false;
     }
 }
 

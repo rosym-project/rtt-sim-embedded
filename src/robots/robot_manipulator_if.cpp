@@ -117,3 +117,72 @@ bool RobotManipulatorIF::configure()
     // this->setControlMode("JointPositionCtrl");
     return true;
 }
+
+bool RobotManipulatorIF::defineKinematicChain(const std::string &urdf, const std::string &chain_root_link_name, const std::string &chain_tip_link_name)
+{
+    if (urdf.length() <= 0)
+    {
+        PRELOG(Error, tc) << "Model name is empty. Returning." << RTT::endlog();
+        return false;
+    }
+
+    if (FILE *file = fopen(urdf.c_str(), "r"))
+    {
+        fclose(file);
+    }
+    else
+    {
+        PRELOG(Error, tc) << "File for model name does not exist. Returning." << RTT::endlog();
+        return false;
+    }
+
+    if (!kdl_parser::treeFromFile(urdf, this->kdl_tree))
+    {
+        PRELOG(Error, tc) << "Could not extract kdl tree. Returning." << RTT::endlog();
+        return false;
+    }
+
+    if (this->kdl_tree.getNrOfJoints() <= 0)
+    {
+        PRELOG(Error, tc) << "this->kdl_tree.getNrOfJoints() = " << this->kdl_tree.getNrOfJoints() << " need to be > 0. Returning." << RTT::endlog();
+        return false;
+    }
+
+    if (this->kdl_tree.getNrOfSegments() <= 0)
+    {
+        PRELOG(Error, tc) << "this->kdl_tree.getNrOfSegments() = " << this->kdl_tree.getNrOfSegments() << " need to be > 0. Returning." << RTT::endlog();
+        return false;
+    }
+
+    PRELOG(Debug, tc) << "kdl_tree NrOfJoints = " << this->kdl_tree.getNrOfJoints() << RTT::endlog();
+    PRELOG(Debug, tc) << "kdl_tree getNrOfSegments = " << this->kdl_tree.getNrOfSegments() << RTT::endlog();
+
+    if ((chain_root_link_name.length() <= 0) || (chain_root_link_name.compare("") == 0))
+    {
+        RTT::log(RTT::Error) << "chain_root_link_name seems to be empty. Returning." << RTT::endlog();
+        return false;
+    }
+    if ((chain_tip_link_name.length() <= 0) || (chain_tip_link_name.compare("") == 0))
+    {
+        RTT::log(RTT::Error) << "chain_tip_link_name seems to be empty. Returning." << RTT::endlog();
+        return false;
+    }
+
+    KDL::Chain _chain_selected_tmp = KDL::Chain();
+    this->kdl_tree.getChain(chain_root_link_name, chain_tip_link_name, _chain_selected_tmp);
+
+    if (_chain_selected_tmp.getNrOfJoints() <= 0)
+    {
+        RTT::log(RTT::Error) << "Number of joints is not > 0. Please check the link names. Returning." << RTT::endlog();
+        return false;
+    }
+
+    if (_chain_selected_tmp.getNrOfSegments() <= 0)
+    {
+        RTT::log(RTT::Error) << "Number of segments is not > 0. Please check the link names. Returning." << RTT::endlog();
+        return false;
+    }
+
+    this->kdl_chain = _chain_selected_tmp;
+    return true;
+}

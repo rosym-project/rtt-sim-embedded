@@ -62,6 +62,8 @@ namespace cosima
         void readFromOrocos();
         void writeToOrocos();
 
+        bool setBasePosition(const double& x, const double& y, const double& z);
+
     private:
         std::shared_ptr<b3CApiWrapperNoGui> sim;
         int robot_id;

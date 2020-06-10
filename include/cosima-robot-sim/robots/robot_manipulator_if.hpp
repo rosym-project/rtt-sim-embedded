@@ -40,6 +40,13 @@
 // ROS
 #include <sensor_msgs/JointState.h>
 
+// ROS KDL PARSER includes
+#include <kdl_parser/kdl_parser.hpp>
+
+// KDL includes
+#include <kdl/tree.hpp>
+#include <kdl/chaindynparam.hpp>
+
 namespace cosima
 {
 
@@ -65,9 +72,17 @@ namespace cosima
         virtual void readFromOrocos() = 0;
         virtual void writeToOrocos() = 0;
 
+        bool defineKinematicChain(const std::string &urdf, const std::string &chain_root_link_name, const std::string &chain_tip_link_name);
+
+        virtual bool setBasePosition(const double& x, const double& y, const double& z) = 0;
+
     protected:
         RTT::TaskContext *tc;
         std::string robot_name;
+
+        std::string robot_urdf;
+        std::string robot_chain_base_link;
+        std::string robot_chain_tip_link;
 
         int num_joints;
         std::map<std::string, int> map_joint_names_2_indices;
@@ -95,6 +110,10 @@ namespace cosima
 
         RTT::OutputPort<sensor_msgs::JointState> out_jointstate_fdb;
         sensor_msgs::JointState out_jointstate_fdb_var;
+
+        // KDL
+        KDL::Tree kdl_tree;
+        KDL::Chain kdl_chain;
     };
 
 } // namespace cosima

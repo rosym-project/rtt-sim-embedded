@@ -74,6 +74,7 @@
   <exec_depend>sensor_msgs</exec_depend>
 
   <depend version_gte="1.3.0">orocos_kdl</depend>
+  <build_depend>kdl_parser</build_depend>
 
 
   <!-- The export tag contains other, unspecified, tags -->

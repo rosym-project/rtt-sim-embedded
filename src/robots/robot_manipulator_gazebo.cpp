@@ -75,6 +75,16 @@ RobotManipulatorGazebo::RobotManipulatorGazebo(const std::string &name, const un
 //   return true;
 // }
 
+bool RobotManipulatorGazebo::setBasePosition(const double& x, const double& y, const double& z)
+{
+    // TODO
+    if (!model)
+    {
+        return false;
+    }
+    return false;
+}
+
 void RobotManipulatorGazebo::WorldUpdateBegin()
 {
     if (!model)

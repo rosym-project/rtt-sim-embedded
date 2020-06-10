@@ -79,7 +79,7 @@ namespace cosima
         void readFromOrocos();
         void writeToOrocos();
 
-        // bool loadModel(const std::string &model_urdf);
+        bool setBasePosition(const double& x, const double& y, const double& z);
 
     private:
         gazebo::physics::Joint_V vec_active_joints;
