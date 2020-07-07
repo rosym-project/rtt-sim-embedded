@@ -237,15 +237,19 @@ bool RobotManipulatorBullet::setControlMode(const std::string &controlMode)
     if (controlMode.compare("JointPositionCtrl") == 0)
     {
         this->requested_control_mode = ControlModes::JointPosCtrl;
+        return true;
     }
     else if (controlMode.compare("JointTorqueCtrl") == 0)
     {
         this->requested_control_mode = ControlModes::JointTrqCtrl;
+        return true;
     }
     else if (controlMode.compare("JointGravComp") == 0)
     {
         this->requested_control_mode = ControlModes::JointGravComp;
+        return true;
     }
+    return false;
 }
 
 bool RobotManipulatorBullet::configure()
