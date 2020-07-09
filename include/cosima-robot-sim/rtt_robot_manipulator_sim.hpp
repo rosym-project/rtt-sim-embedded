@@ -49,6 +49,9 @@
 #include "simulator_interface/gazebo/gazebo_if.hpp"
 #endif
 
+// For nanosleep
+#include <time.h>
+
 namespace cosima
 {
 
@@ -75,6 +78,8 @@ namespace cosima
 
     bool setBasePosition(const std::string &modelName, const double& x, const double& y, const double& z);
 
+    bool setUpdatePeriod(double period);
+
 #ifndef DISABLE_BULLET
     bool connectBullet();
     void disconnectBullet();
@@ -96,6 +101,9 @@ namespace cosima
 
     // std::map<unsigned int, std::shared_ptr<RobotManipulatorIF>> map_robot_manipulators;
     std::map<std::string, std::shared_ptr<RobotManipulatorIF>> map_robot_manipulators;
+
+    struct timespec req;
+    double my_period;
   };
 
 } // namespace cosima

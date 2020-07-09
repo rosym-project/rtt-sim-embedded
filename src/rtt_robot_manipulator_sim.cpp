@@ -26,6 +26,7 @@
 
 #include "../include/cosima-robot-sim/rtt_robot_manipulator_sim.hpp"
 #include <rtt/Component.hpp> // needed for the macro at the end of this file
+// #include <rtt/Activity.hpp>  // needed for using setActivity
 
 #include <unistd.h>
 
@@ -76,6 +77,24 @@ RTTRobotManipulatorSim::RTTRobotManipulatorSim(std::string const &name) : RTT::T
 
         addOperation("setBasePosition", &RTTRobotManipulatorSim::setBasePosition, this, RTT::OwnThread);
     }
+
+    this->req.tv_sec = 0;
+    this->req.tv_nsec = 0;
+
+    this->my_period = 0.0;
+    addOperation("setUpdatePeriod", &RTTRobotManipulatorSim::setUpdatePeriod, this, RTT::OwnThread);
+
+}
+
+bool RTTRobotManipulatorSim::setUpdatePeriod(double period)
+{
+    if (period >= 0)
+    {
+        this->my_period = period;
+        return true;
+    }
+    PRELOG(Warning) << "Not changing the update period, because it was < 0." << RTT::endlog();
+    return false;
 }
 
 bool RTTRobotManipulatorSim::setBasePosition(const std::string &modelName, const double& x, const double& y, const double& z)
@@ -148,6 +167,19 @@ void RTTRobotManipulatorSim::disconnectGazebo()
 
 bool RTTRobotManipulatorSim::configureHook()
 {
+    // bool ret_act_update = this->setActivity(new RTT::Activity(RTT::os::HighestPriority, 0));
+    // if (!ret_act_update)
+    // {
+    //     PRELOG(Error) << "Could not set a new activity!" << RTT::endlog();
+    //     return false;
+    // }
+    // ret_act_update = this->getActivity()->setCpuAffinity(0);
+    // if (!ret_act_update)
+    // {
+    //     PRELOG(Error) << "Could not update the CPU affinity of the activity!" << RTT::endlog();
+    //     return false;
+    // }
+
     for (auto const &e : map_robot_manipulators)
     {
         if (!e.second->configure())
@@ -176,6 +208,7 @@ bool RTTRobotManipulatorSim::startHook()
 
 void RTTRobotManipulatorSim::updateHook()
 {
+    RTT::os::TimeService::ticks begin_ticks = RTT::os::TimeService::Instance()->getTicks();
     for (auto const &e : map_robot_manipulators)
     {
         e.second->sense();
@@ -191,6 +224,18 @@ void RTTRobotManipulatorSim::updateHook()
 #ifndef DISABLE_BULLET
     this->bullet_interface->stepSimulation();
 #endif
+    long double end_time_nsec = RTT::os::TimeService::ticks2nsecs(RTT::os::TimeService::Instance()->getTicks() - begin_ticks);
+
+    long diff_time_nsec = ((long double)(this->my_period * 1E+9)) - end_time_nsec;
+
+    if (diff_time_nsec > 0)
+    {
+        req.tv_nsec = diff_time_nsec;
+        nanosleep(&req, (struct timespec *)NULL);
+    }
+
+    this->trigger();
+    // this->getActivity()->execute(); // Does not seem to work
 }
 
 void RTTRobotManipulatorSim::stopHook()
