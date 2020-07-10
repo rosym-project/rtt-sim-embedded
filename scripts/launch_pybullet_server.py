@@ -39,6 +39,19 @@ p.setTimeStep(0.001) # TODO Chose the right number that matches with OROCOS RTT
 # kukaUid = p.loadURDF("/home/dwigand/code/cogimon/CoSimA/pyBullet/catkin_py_ws/src/py-flex-assembly/gym_flexassembly/data/kuka-iiwa-7/model.urdf", useFixedBase=True)
 # p.resetBasePositionAndOrientation(kukaUid, [0, -0.2, 0.5], [0,0,0,1])
 
+
+
+# kuka_id = p.loadURDF("/home/dwigand/code/cogimon/CoSimA/pyBullet/catkin_py_ws/src/py-flex-assembly/gym_flexassembly/data/kuka-iiwa-7-egp-40/model.urdf", useFixedBase=True, flags = p.URDF_USE_INERTIA_FROM_FILE)
+# print("KUKA ID = " + str(kuka_id))
+
+# # Workpiece to be polished
+# workpiece_id = p.loadURDF("/home/dwigand/code/cogimon/CoSimA/pyBullet/catkin_py_ws/src/py-flex-assembly/gym_flexassembly/data/3d/bend_wood.urdf", useFixedBase=False, flags = p.URDF_USE_INERTIA_FROM_FILE)
+# wood_offset_table_x = 0.7
+# wood_offset_table_y = -0.2
+# wood_offset_table_z = 0.45
+# wood_offset_world = [wood_offset_table_x, wood_offset_table_y, wood_offset_table_z]
+# p.resetBasePositionAndOrientation(workpiece_id, wood_offset_world, [0,0,1,1])
+
 try:
     print("Waiting for CTRL-C")
     signal.pause()

@@ -31,7 +31,7 @@ project(cosima-robot-sim)
 add_compile_options(-std=c++11)
 
 # SET(CMAKE_BUILD_TYPE RelWithDebInfo)
-SET(CMAKE_BUILD_TYPE Release)
+SET(CMAKE_BUILD_TYPE RelWithDebInfo)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -268,6 +268,12 @@ orocos_generate_package(
   #INCLUDE_DIRS include
   DEPENDS rtt_ros
 )
+
+
+# TEST interface
+add_executable (interface_test ${PROJECT_SOURCE_DIR}/src/test/interface_test.cpp ${PROJECT_SOURCE_DIR}/src/simulator_interface/bullet/b3_capi_wrapper_no_gui.cpp)
+target_link_libraries(interface_test ${EIGEN3_LIBRARIES} ${BULLET_LIBRARIES})
+
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the

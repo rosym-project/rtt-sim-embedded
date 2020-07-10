@@ -51,7 +51,12 @@ void RobotManipulatorBullet::sense()
     for (unsigned int j = 0; j < this->num_joints; j++)
     {
         b3JointSensorState state;
-        sim->getJointState(this->robot_id, joint_indices[j], &state);
+        bool ret_joint_state = sim->getJointState(this->robot_id, joint_indices[j], &state);
+        if (!ret_joint_state)
+        {
+            PRELOG(Fatal, this->tc) << "Joint State computations failed" << RTT::endlog();
+            return;
+        }
         this->q[j] = state.m_jointPosition;
         this->qd[j] = state.m_jointVelocity;
         this->zero_accelerations[j] = 0.0;
@@ -64,7 +69,12 @@ void RobotManipulatorBullet::sense()
     //////////////////////////////////////////////
     ///////// Calculate Inverse Dynamics /////////
     //////////////////////////////////////////////
-    sim->calculateInverseDynamics(this->robot_id, this->q, this->qd, this->zero_accelerations, this->gc);
+    bool ret_inv_dyn_calc = sim->calculateInverseDynamics(this->robot_id, this->q, this->qd, this->zero_accelerations, this->gc);
+    if (!ret_inv_dyn_calc)
+    {
+        PRELOG(Fatal, this->tc) << "Inverse Dynamics computations failed" << RTT::endlog();
+        return;
+    }
     for (unsigned int j = 0; j < this->num_joints; j++)
     {
         this->out_gc_fdb_var(j) = this->gc[j];
@@ -75,7 +85,12 @@ void RobotManipulatorBullet::sense()
     ///////////////////////////////////////////////
 
     // TODO flag? 0 or 1?
-    sim->calculateMassMatrix(this->robot_id, this->q, this->num_joints, this->M, 0);
+    int ret_mass_calc = sim->calculateMassMatrix(this->robot_id, this->q, this->num_joints, this->M, 0);
+    if (ret_mass_calc == 0)
+    {
+        PRELOG(Fatal, this->tc) << "Mass Matrix computations failed" << RTT::endlog();
+        return;
+    }
     for (unsigned int u = 0; u < this->num_joints; u++)
     {
         for (unsigned int v = 0; v < this->num_joints; v++)
@@ -189,20 +204,40 @@ void RobotManipulatorBullet::act()
     }
     else if (this->active_control_mode == ControlModes::JointTrqCtrl)
     {
-        b3RobotSimulatorJointMotorArrayArgs _mode_params_trq(CONTROL_MODE_TORQUE, this->num_joints);
-        _mode_params_trq.m_jointIndices = this->joint_indices;
-        ///////////////////////////////////////////////////////////////////////////////
-        // TODO THINK ABOUT THE SEMANTIC REGARDING SENDING THE COMMANDS TO THE ROBOT //
-        ///////////////////////////////////////////////////////////////////////////////
+        // b3RobotSimulatorJointMotorArrayArgs _mode_params_trq(CONTROL_MODE_TORQUE, this->num_joints);
+        // _mode_params_trq.m_jointIndices = this->joint_indices;
+        // ///////////////////////////////////////////////////////////////////////////////
+        // // TODO THINK ABOUT THE SEMANTIC REGARDING SENDING THE COMMANDS TO THE ROBOT //
+        // ///////////////////////////////////////////////////////////////////////////////
+        // if (this->in_JointTorqueCtrl_cmd_flow != RTT::NewData)
+        // {
+        //     _mode_params_trq.m_forces = this->gc;
+        // }
+        // else
+        // {
+        //     _mode_params_trq.m_forces = this->cmd_trq;
+        // }
+        // sim->setJointMotorControlArray(this->robot_id, _mode_params_trq);
+
+        b3RobotSimulatorJointMotorArgs _mode_params_trq(CONTROL_MODE_TORQUE);
+        
         if (this->in_JointTorqueCtrl_cmd_flow != RTT::NewData)
         {
-            _mode_params_trq.m_forces = this->gc;
+            for (unsigned int j_index_id = 0; j_index_id < 2; j_index_id++)
+            {
+                _mode_params_trq.m_maxTorqueValue = this->gc[j_index_id];
+                sim->setJointMotorControl(this->robot_id, this->joint_indices[j_index_id], _mode_params_trq);
+            }
         }
         else
         {
-            _mode_params_trq.m_forces = this->cmd_trq;
+            for (unsigned int j_index_id = 0; j_index_id < 2; j_index_id++)
+            {
+                _mode_params_trq.m_maxTorqueValue = this->cmd_trq[j_index_id];
+                sim->setJointMotorControl(this->robot_id, this->joint_indices[j_index_id], _mode_params_trq);
+            }
         }
-        sim->setJointMotorControlArray(this->robot_id, _mode_params_trq);
+
     }
 }
 
@@ -295,6 +330,36 @@ bool RobotManipulatorBullet::configure()
                 {
                     b3JointInfo jointInfo;
                     sim->getJointInfo(this->robot_id, j, &jointInfo);
+
+                    // Candidate Joints with types
+                    if (jointInfo.m_jointType == eFixedType)
+                    {
+                        PRELOG(Error, this->tc) << "[CANDIDATE] (eFixedType) joint Motorname " << jointInfo.m_jointName << " at index " << jointInfo.m_jointIndex << RTT::endlog();
+                    }
+                    else if (jointInfo.m_jointType == eRevoluteType)
+                    {
+                        PRELOG(Error, this->tc) << "[CANDIDATE] (eRevoluteType) joint Motorname " << jointInfo.m_jointName << " at index " << jointInfo.m_jointIndex << RTT::endlog();
+                    }
+                    else if (jointInfo.m_jointType == ePrismaticType)
+                    {
+                        PRELOG(Error, this->tc) << "[CANDIDATE] (ePrismaticType) joint Motorname " << jointInfo.m_jointName << " at index " << jointInfo.m_jointIndex << RTT::endlog();
+                    }
+                    else if (jointInfo.m_jointType == eSphericalType)
+                    {
+                        PRELOG(Error, this->tc) << "[CANDIDATE] (eSphericalType) joint Motorname " << jointInfo.m_jointName << " at index " << jointInfo.m_jointIndex << RTT::endlog();
+                    }
+                    else if (jointInfo.m_jointType == ePlanarType)
+                    {
+                        PRELOG(Error, this->tc) << "[CANDIDATE] (ePlanarType) joint Motorname " << jointInfo.m_jointName << " at index " << jointInfo.m_jointIndex << RTT::endlog();
+                    }
+                    else if (jointInfo.m_jointType == ePoint2PointType)
+                    {
+                        PRELOG(Error, this->tc) << "[CANDIDATE] (ePoint2PointType) joint Motorname " << jointInfo.m_jointName << " at index " << jointInfo.m_jointIndex << RTT::endlog();
+                    }
+                    else if (jointInfo.m_jointType == eGearType)
+                    {
+                        PRELOG(Error, this->tc) << "[CANDIDATE] (eGearType) joint Motorname " << jointInfo.m_jointName << " at index " << jointInfo.m_jointIndex << RTT::endlog();
+                    }
                     // Ignore fixed joints
                     if ((jointInfo.m_jointIndex > -1) && (jointInfo.m_jointType != eFixedType))
                     {

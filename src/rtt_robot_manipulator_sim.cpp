@@ -84,6 +84,7 @@ RTTRobotManipulatorSim::RTTRobotManipulatorSim(std::string const &name) : RTT::T
     this->my_period = 0.0;
     addOperation("setUpdatePeriod", &RTTRobotManipulatorSim::setUpdatePeriod, this, RTT::OwnThread);
 
+    this->last_time = 0.0;
 }
 
 bool RTTRobotManipulatorSim::setUpdatePeriod(double period)
@@ -97,7 +98,7 @@ bool RTTRobotManipulatorSim::setUpdatePeriod(double period)
     return false;
 }
 
-bool RTTRobotManipulatorSim::setBasePosition(const std::string &modelName, const double& x, const double& y, const double& z)
+bool RTTRobotManipulatorSim::setBasePosition(const std::string &modelName, const double &x, const double &y, const double &z)
 {
     if (map_robot_manipulators.count(modelName))
     {
@@ -203,11 +204,18 @@ bool RTTRobotManipulatorSim::startHook()
     ret = ret || ret_gazebo;
 #endif
 
+    last_time = 1E-9 * RTT::os::TimeService::ticks2nsecs(RTT::os::TimeService::Instance()->getTicks());
+
     return ret;
 }
 
 void RTTRobotManipulatorSim::updateHook()
 {
+    // // Barrier with(semi) busy wait
+    // double this_time = 1E-9 * RTT::os::TimeService::ticks2nsecs(RTT::os::TimeService::Instance()->getTicks());
+    // if ((this_time - last_time) >= this->my_period)
+    // {
+
     RTT::os::TimeService::ticks begin_ticks = RTT::os::TimeService::Instance()->getTicks();
     for (auto const &e : map_robot_manipulators)
     {
@@ -235,7 +243,10 @@ void RTTRobotManipulatorSim::updateHook()
     }
 
     this->trigger();
-    // this->getActivity()->execute(); // Does not seem to work
+    // // this->getActivity()->execute(); // Does not seem to work
+    // last_time = this_time;
+    // }
+    // this->trigger();
 }
 
 void RTTRobotManipulatorSim::stopHook()
@@ -268,6 +279,7 @@ bool RTTRobotManipulatorSim::connectToExternallySpawnedRobot(const std::string &
             // Create Robot
             std::shared_ptr<RobotManipulatorIF> robot = std::shared_ptr<RobotManipulatorIF>(new RobotManipulatorBullet(modelName, modelId, this->bullet_interface->sim, this));
             map_robot_manipulators[modelName] = robot;
+            return true;
         }
     }
 #endif
@@ -280,6 +292,7 @@ bool RTTRobotManipulatorSim::connectToExternallySpawnedRobot(const std::string &
             // Create Robot
             std::shared_ptr<RobotManipulatorIF> robot = std::shared_ptr<RobotManipulatorIF>(new RobotManipulatorGazebo(modelName, modelId, this));
             map_robot_manipulators[modelName] = robot;
+            return true;
         }
     }
 #endif

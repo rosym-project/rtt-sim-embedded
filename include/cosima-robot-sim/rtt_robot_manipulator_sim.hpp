@@ -104,6 +104,8 @@ namespace cosima
 
     struct timespec req;
     double my_period;
+
+    double last_time;
   };
 
 } // namespace cosima
