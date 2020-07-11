@@ -50,6 +50,12 @@
 namespace cosima
 {
 
+    enum InterfaceType
+    {
+        Bullet = 0,
+        Gazebo = 1
+    };
+
     enum ControlModes
     {
         JointPosCtrl = 0,
@@ -75,6 +81,8 @@ namespace cosima
         bool defineKinematicChain(const std::string &urdf, const std::string &chain_root_link_name, const std::string &chain_tip_link_name);
 
         virtual bool setBasePosition(const double& x, const double& y, const double& z) = 0;
+
+        virtual InterfaceType getInterfaceType() = 0;
 
     protected:
         RTT::TaskContext *tc;

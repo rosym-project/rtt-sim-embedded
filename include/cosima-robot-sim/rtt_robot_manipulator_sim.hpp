@@ -28,6 +28,9 @@
 
 #include <rtt/Port.hpp>
 #include <rtt/TaskContext.hpp>
+#include <rtt/os/Timer.hpp>
+#include <rtt/os/Thread.hpp>
+#include <rtt/os/Semaphore.hpp>
 #include <string>
 
 #include <Eigen/Dense>
@@ -80,6 +83,9 @@ namespace cosima
 
     bool setUpdatePeriod(double period);
 
+    // Update hook for thread
+    void simUpdateHook();
+
 #ifndef DISABLE_BULLET
     bool connectBullet();
     void disconnectBullet();
@@ -106,6 +112,35 @@ namespace cosima
     double my_period;
 
     double last_time;
+
+    //! An RTT thread class for low level IO
+    class BulletSimThread : public RTT::os::Thread
+    {
+    public:
+      BulletSimThread(RTTRobotManipulatorSim* owner);
+      RTTRobotManipulatorSim* owner_;
+    protected:
+      virtual bool initialize();
+      virtual void loop();
+      virtual void step();
+      virtual bool breakLoop();
+      virtual void finalize();
+
+      RTT::os::Semaphore break_loop_sem_;
+      RTT::os::Semaphore done_sem_;
+    };
+
+    boost::shared_ptr<BulletSimThread> bullet_sim_thread_;
+    // Threading synchronization
+    RTT::os::Semaphore new_state_sem_;
+    RTT::os::Semaphore new_cmd_sem_;
+    
+    bool new_state_;
+    RTT::os::Mutex new_state_mutex_;
+    RTT::os::Condition new_state_cond_;
+
+    bool new_cmd_;
+    RTT::os::Mutex new_cmd_mutex_;
   };
 
 } // namespace cosima

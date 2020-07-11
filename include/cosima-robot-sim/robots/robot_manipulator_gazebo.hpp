@@ -81,6 +81,8 @@ namespace cosima
 
         bool setBasePosition(const double& x, const double& y, const double& z);
 
+        InterfaceType getInterfaceType();
+
     private:
         gazebo::physics::Joint_V vec_active_joints;
 

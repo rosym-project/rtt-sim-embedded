@@ -43,7 +43,7 @@
 using namespace cosima;
 using namespace RTT;
 
-RTTRobotManipulatorSim::RTTRobotManipulatorSim(std::string const &name) : RTT::TaskContext(name)
+RTTRobotManipulatorSim::RTTRobotManipulatorSim(std::string const &name) : RTT::TaskContext(name), new_state_sem_(0), new_cmd_sem_(0), new_cmd_(false), new_state_(false)
 {
     bool _at_least_one_simulator = false;
 #ifndef DISABLE_BULLET
@@ -188,7 +188,10 @@ bool RTTRobotManipulatorSim::configureHook()
             return false;
         }
     }
-    return true;
+
+    // Create the separate thread
+    this->bullet_sim_thread_.reset(new BulletSimThread(this));
+    return this->bullet_sim_thread_->start();
 }
 
 bool RTTRobotManipulatorSim::startHook()
@@ -211,46 +214,79 @@ bool RTTRobotManipulatorSim::startHook()
 
 void RTTRobotManipulatorSim::updateHook()
 {
-    // // Barrier with(semi) busy wait
-    // double this_time = 1E-9 * RTT::os::TimeService::ticks2nsecs(RTT::os::TimeService::Instance()->getTicks());
-    // if ((this_time - last_time) >= this->my_period)
+    // This update hook is synchronized with the device thread, which uses
+    // blocking IO. Note that the devide thread does not block and wait for
+    // this thread to provide it with a new command. If one isn't ready, then
+    // it does not send a command.
+    {
+        for (auto const &e : map_robot_manipulators)
+        {
+            e.second->readFromOrocos();
+            // if (e.second->getInterfaceType() == InterfaceType::Bullet)
+            // {
+            // }
+        }
+
+        // Signal that a new command is ready
+        RTT::os::MutexLock lock(new_cmd_mutex_);
+        new_cmd_ = true;
+    }
+
+    {
+        // Wait for new state from the device thread
+        RTT::os::MutexLock lock(new_state_mutex_);
+        if (!new_state_)
+        {
+            new_state_cond_.wait(new_state_mutex_);
+        }
+        new_state_ = false;
+        for (auto const &e : map_robot_manipulators)
+        {
+            // if (e.second->getInterfaceType() == InterfaceType::Bullet)
+            // {
+            // }
+            e.second->writeToOrocos();
+        }
+    }
+
+    // // // Barrier with(semi) busy wait
+    // // double this_time = 1E-9 * RTT::os::TimeService::ticks2nsecs(RTT::os::TimeService::Instance()->getTicks());
+    // // if ((this_time - last_time) >= this->my_period)
+    // // {
+
+    // RTT::os::TimeService::ticks begin_ticks = RTT::os::TimeService::Instance()->getTicks();
+    // for (auto const &e : map_robot_manipulators)
     // {
-
-    RTT::os::TimeService::ticks begin_ticks = RTT::os::TimeService::Instance()->getTicks();
-    for (auto const &e : map_robot_manipulators)
-    {
-        e.second->sense();
-        e.second->writeToOrocos();
-    }
-
-    for (auto const &e : map_robot_manipulators)
-    {
-        e.second->readFromOrocos();
-        e.second->act();
-    }
-
-#ifndef DISABLE_BULLET
-    this->bullet_interface->stepSimulation();
-#endif
-    long double end_time_nsec = RTT::os::TimeService::ticks2nsecs(RTT::os::TimeService::Instance()->getTicks() - begin_ticks);
-
-    long diff_time_nsec = ((long double)(this->my_period * 1E+9)) - end_time_nsec;
-
-    if (diff_time_nsec > 0)
-    {
-        req.tv_nsec = diff_time_nsec;
-        nanosleep(&req, (struct timespec *)NULL);
-    }
-
-    this->trigger();
-    // // this->getActivity()->execute(); // Does not seem to work
-    // last_time = this_time;
+    //     e.second->sense();
+    //     e.second->writeToOrocos();
     // }
+
+    // for (auto const &e : map_robot_manipulators)
+    // {
+    //     e.second->readFromOrocos();
+    //     e.second->act();
+    // }
+
+    // long double end_time_nsec = RTT::os::TimeService::ticks2nsecs(RTT::os::TimeService::Instance()->getTicks() - begin_ticks);
+
+    // long diff_time_nsec = ((long double)(this->my_period * 1E+9)) - end_time_nsec;
+
+    // if (diff_time_nsec > 0)
+    // {
+    //     req.tv_nsec = diff_time_nsec;
+    //     nanosleep(&req, (struct timespec *)NULL);
+    // }
+
     // this->trigger();
+    // // // this->getActivity()->execute(); // Does not seem to work
+    // // last_time = this_time;
+    // // }
+    // // this->trigger();
 }
 
 void RTTRobotManipulatorSim::stopHook()
 {
+    this->bullet_sim_thread_->stop();
 }
 
 void RTTRobotManipulatorSim::cleanupHook()
@@ -363,6 +399,97 @@ int RTTRobotManipulatorSim::spawnRobot(const std::string &modelName, const std::
     Eigen::Vector4d q = Eigen::Vector4d::Zero();
     q(0) = 1;
     return spawnRobotAtPose(modelName, modelURDF, t, q, simulator);
+}
+
+/////////////////////////////////////
+///////////// THREADING /////////////
+/////////////////////////////////////
+RTTRobotManipulatorSim::BulletSimThread::BulletSimThread(RTTRobotManipulatorSim *owner) : RTT::os::Thread(
+                                                                                              ORO_SCHED_RT,
+                                                                                              RTT::os::HighestPriority,
+                                                                                              owner->getPeriod(),
+                                                                                              0,
+                                                                                              owner->getName() + "-bullet-sim-thread"),
+                                                                                          owner_(owner),
+                                                                                          break_loop_sem_(0),
+                                                                                          done_sem_(0)
+{
+    RTT::log(RTT::Error) << "Creating bullet sim thread on CPU 0 running at " << owner->getPeriod() << RTT::endlog();
+}
+
+bool RTTRobotManipulatorSim::BulletSimThread::initialize()
+{
+    // return owner_->simStartHook();
+    return true;
+}
+
+void RTTRobotManipulatorSim::simUpdateHook()
+{
+    // ros::Time time = rtt_rosclock::rtt_now();
+    // RTT::Seconds period = (time - last_update_time_).toSec();
+    // period_ = period;
+
+    // Sense
+    {
+        RTT::os::MutexLock lock(new_state_mutex_);
+
+        // RTT::os::TimeService::ticks read_start = RTT::os::TimeService::Instance()->getTicks();
+
+        for (auto const &e : map_robot_manipulators)
+        {
+            e.second->sense();
+        }
+
+        // read_duration_ = RTT::os::TimeService::Instance()->secondsSince(read_start);
+
+        // Signal the new state
+        new_state_ = true;
+        new_state_cond_.broadcast();
+    }
+
+    // Act
+    {
+        RTT::os::MutexLock lock(new_cmd_mutex_);
+        if (new_cmd_)
+        {
+            // RTT::os::TimeService::ticks write_start = RTT::os::TimeService::Instance()->getTicks();
+            for (auto const &e : map_robot_manipulators)
+            {
+                e.second->act();
+            }
+            // write_duration_ = RTT::os::TimeService::Instance()->secondsSince(write_start);
+
+            new_cmd_ = false;
+        }
+
+        // this->bullet_interface->stepSimulation();
+    }
+
+    this->bullet_interface->stepSimulation();
+
+    // last_update_time_ = time;
+}
+
+void RTTRobotManipulatorSim::BulletSimThread::loop()
+{
+}
+
+void RTTRobotManipulatorSim::BulletSimThread::step()
+{
+    if (owner_->isRunning())
+    {
+        owner_->simUpdateHook();
+    }
+}
+
+bool RTTRobotManipulatorSim::BulletSimThread::breakLoop()
+{
+    return true;
+}
+
+void RTTRobotManipulatorSim::BulletSimThread::finalize()
+{
+    // owner_->simShutdownHook();
 }
 
 // This macro should appear only once per library

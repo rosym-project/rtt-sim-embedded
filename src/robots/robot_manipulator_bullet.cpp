@@ -40,6 +40,11 @@ RobotManipulatorBullet::RobotManipulatorBullet(const std::string &name, const un
     this->robot_id = model_id;
 }
 
+InterfaceType RobotManipulatorBullet::getInterfaceType()
+{
+    return InterfaceType::Bullet;
+}
+
 void RobotManipulatorBullet::sense()
 {
     ////////////////////////////////////////////////////

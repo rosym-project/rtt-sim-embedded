@@ -75,6 +75,11 @@ RobotManipulatorGazebo::RobotManipulatorGazebo(const std::string &name, const un
 //   return true;
 // }
 
+InterfaceType RobotManipulatorGazebo::getInterfaceType()
+{
+    return InterfaceType::Gazebo;
+}
+
 bool RobotManipulatorGazebo::setBasePosition(const double& x, const double& y, const double& z)
 {
     // TODO
