@@ -58,7 +58,7 @@ namespace cosima
         void act();
 
         bool setControlMode(const std::string &controlMode);
-        bool setActiveKinematicChain(const std::vector<std::string> &jointNames);
+        // bool setActiveKinematicChain(const std::vector<std::string> &jointNames);
         void readFromOrocos();
         void writeToOrocos();
 
@@ -87,6 +87,17 @@ namespace cosima
         // Act
         double *cmd_trq;
         double *cmd_pos;
+
+        unsigned int num_motor_joints;
+        // std::map<std::string, int> map_motor_joint_names_2_indices;
+        std::vector<unsigned int> vec_motor_joint_indices;
+
+        std::vector<unsigned int> index_of_controlled_joint_in_controllable_joints;
+
+        // Control Mode Parameters
+        b3RobotSimulatorJointMotorArrayArgs ctrl_mode_params_4_motor_joints, ctrl_mode_params_4_joints;
+
+        double *_tmp_calc_on_me;
     };
 
 } // namespace cosima

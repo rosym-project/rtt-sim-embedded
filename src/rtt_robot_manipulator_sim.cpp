@@ -214,11 +214,12 @@ bool RTTRobotManipulatorSim::startHook()
 
 void RTTRobotManipulatorSim::updateHook()
 {
-    // This update hook is synchronized with the device thread, which uses
-    // blocking IO. Note that the devide thread does not block and wait for
+    // This update hook is synchronized with the simulation thread, which uses
+    // blocking RPC calls (over shared memory). Note that the simulation thread does not block and wait for
     // this thread to provide it with a new command. If one isn't ready, then
     // it does not send a command.
     {
+        RTT::os::MutexLock lock(new_cmd_mutex_);
         for (auto const &e : map_robot_manipulators)
         {
             e.second->readFromOrocos();
@@ -228,18 +229,19 @@ void RTTRobotManipulatorSim::updateHook()
         }
 
         // Signal that a new command is ready
-        RTT::os::MutexLock lock(new_cmd_mutex_);
-        new_cmd_ = true;
+        // RTT::os::MutexLock lock(new_cmd_mutex_);
+        // new_cmd_ = true;
     }
 
     {
         // Wait for new state from the device thread
+        // RTT::os::MutexLock lock(new_state_mutex_);
+        // if (!new_state_)
+        // {
+            // new_state_cond_.wait(new_state_mutex_);
+        // }
+        // new_state_ = false;
         RTT::os::MutexLock lock(new_state_mutex_);
-        if (!new_state_)
-        {
-            new_state_cond_.wait(new_state_mutex_);
-        }
-        new_state_ = false;
         for (auto const &e : map_robot_manipulators)
         {
             // if (e.second->getInterfaceType() == InterfaceType::Bullet)
@@ -443,15 +445,15 @@ void RTTRobotManipulatorSim::simUpdateHook()
         // read_duration_ = RTT::os::TimeService::Instance()->secondsSince(read_start);
 
         // Signal the new state
-        new_state_ = true;
-        new_state_cond_.broadcast();
+        // new_state_ = true;
+        // new_state_cond_.broadcast();
     }
 
     // Act
     {
         RTT::os::MutexLock lock(new_cmd_mutex_);
-        if (new_cmd_)
-        {
+        // if (new_cmd_)
+        // {
             // RTT::os::TimeService::ticks write_start = RTT::os::TimeService::Instance()->getTicks();
             for (auto const &e : map_robot_manipulators)
             {
@@ -459,8 +461,8 @@ void RTTRobotManipulatorSim::simUpdateHook()
             }
             // write_duration_ = RTT::os::TimeService::Instance()->secondsSince(write_start);
 
-            new_cmd_ = false;
-        }
+            // new_cmd_ = false;
+        // }
 
         // this->bullet_interface->stepSimulation();
     }

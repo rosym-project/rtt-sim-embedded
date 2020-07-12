@@ -248,33 +248,33 @@ void RobotManipulatorGazebo::act()
 {
 }
 
-bool RobotManipulatorGazebo::setActiveKinematicChain(const std::vector<std::string> &jointNames)
-{
-    // TODO
+// bool RobotManipulatorGazebo::setActiveKinematicChain(const std::vector<std::string> &jointNames)
+// {
+//     // TODO
 
-    // if (jointNames.size() != this->vec_joint_indices.size())
-    // {
-    //     return false;
-    // }
-    // // check for inconsistent names
-    // for (unsigned int i = 0; i < jointNames.size(); i++)
-    // {
-    //     if (this->map_joint_names_2_indices.count(jointNames[i]))
-    //     {
-    //     }
-    //     else
-    //     {
-    //         return false;
-    //     }
-    // }
+//     // if (jointNames.size() != this->vec_joint_indices.size())
+//     // {
+//     //     return false;
+//     // }
+//     // // check for inconsistent names
+//     // for (unsigned int i = 0; i < jointNames.size(); i++)
+//     // {
+//     //     if (this->map_joint_names_2_indices.count(jointNames[i]))
+//     //     {
+//     //     }
+//     //     else
+//     //     {
+//     //         return false;
+//     //     }
+//     // }
 
-    // for (unsigned int i = 0; i < jointNames.size(); i++)
-    // {
-    //     this->vec_joint_indices[i] = this->map_joint_names_2_indices[jointNames[i]];
-    //     this->joint_indices[i] = this->vec_joint_indices[i];
-    // }
-    return true;
-}
+//     // for (unsigned int i = 0; i < jointNames.size(); i++)
+//     // {
+//     //     this->vec_joint_indices[i] = this->map_joint_names_2_indices[jointNames[i]];
+//     //     this->joint_indices[i] = this->vec_joint_indices[i];
+//     // }
+//     return true;
+// }
 
 bool RobotManipulatorGazebo::setControlMode(const std::string &controlMode)
 {

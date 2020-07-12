@@ -30,8 +30,8 @@ project(cosima-robot-sim)
 ## Compile as C++11, supported in ROS Kinetic and newer
 add_compile_options(-std=c++11)
 
-# SET(CMAKE_BUILD_TYPE RelWithDebInfo)
-SET(CMAKE_BUILD_TYPE Debug)
+SET(CMAKE_BUILD_TYPE RelWithDebInfo)
+# SET(CMAKE_BUILD_TYPE Debug)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -240,6 +240,12 @@ orocos_component(${CMAKE_PROJECT_NAME}
   ${PROJECT_SOURCE_DIR}/src/robots/robot_manipulator_gazebo.cpp
   # Generic OROCOS RTT Component
   ${PROJECT_SOURCE_DIR}/src/rtt_robot_manipulator_sim.cpp
+
+  ${PROJECT_SOURCE_DIR}/src/test/rtt_interface_test.cpp
+  ${PROJECT_SOURCE_DIR}/src/test/interface_test.cpp
+  ${PROJECT_SOURCE_DIR}/src/test/b3RobotSimulatorClientAPI_NoDirect.cpp
+  ${PROJECT_SOURCE_DIR}/src/test/b3RobotSimulatorClientAPI_NoGUI.cpp
+  ${PROJECT_SOURCE_DIR}/src/test/b3RobotSimulatorClientAPI.cpp
 )
 
 # set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES COMPILE_DEFINITIONS RTT_COMPONENT)
@@ -271,7 +277,7 @@ orocos_generate_package(
 
 
 # TEST interface
-add_executable (interface_test ${PROJECT_SOURCE_DIR}/src/test/interface_test.cpp ${PROJECT_SOURCE_DIR}/src/simulator_interface/bullet/b3_capi_wrapper_no_gui.cpp)
+add_executable (interface_test ${PROJECT_SOURCE_DIR}/src/test/interface_test.cpp ${PROJECT_SOURCE_DIR}/src/simulator_interface/bullet/b3_capi_wrapper_no_gui.cpp ${PROJECT_SOURCE_DIR}/src/test/b3RobotSimulatorClientAPI_NoDirect.cpp ${PROJECT_SOURCE_DIR}/src/test/b3RobotSimulatorClientAPI_NoGUI.cpp ${PROJECT_SOURCE_DIR}/src/test/b3RobotSimulatorClientAPI.cpp)
 target_link_libraries(interface_test ${EIGEN3_LIBRARIES} ${BULLET_LIBRARIES})
 
 

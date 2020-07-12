@@ -24,62 +24,46 @@
  *
  * ============================================================ */
 
-#pragma once
+#include "../include/cosima-robot-sim/test/rtt_interface_test.hpp"
+#include <rtt/Component.hpp> // needed for the macro at the end of this file
+// #include <rtt/Activity.hpp>  // needed for using setActivity
 
-#include <string>
+#include <unistd.h>
 
-#include <Eigen/Dense>
-#include <iostream>
+#define PRELOG(X) (RTT::log(RTT::X) << "[" << this->getName() << "] ")
 
-#include <memory>
+using namespace cosima;
+using namespace RTT;
 
-// For nanosleep
-#include <time.h>
-
-#include <bullet/LinearMath/btAlignedObjectArray.h>
-#include <bullet/LinearMath/btVector3.h>
-#include <bullet/LinearMath/btQuaternion.h>
-
-// Bullet-Specific includes
-// #include "../simulator_interface/bullet/b3_capi_wrapper_no_gui.hpp"
-
-#include "b3RobotSimulatorClientAPI.hpp"
-
-#include <chrono>
-
-class TestInterface
+RTTInterfaceTest::RTTInterfaceTest(std::string const &name) : RTT::TaskContext(name)
 {
-public:
-  TestInterface();
-  void loop();
+}
 
-  // std::shared_ptr<b3CApiWrapperNoGui> sim;
-  std::shared_ptr<b3RobotSimulatorClientAPI> sim;
+bool RTTInterfaceTest::configureHook()
+{
+    return true;
+}
 
+bool RTTInterfaceTest::startHook()
+{
+    return true;
+}
 
-private:
-  int num_joints;
-  double last_time;
-  std::vector<int> vec_joint_indices;
-  int model_id;
+void RTTInterfaceTest::updateHook()
+{
+    it.loop();
+}
 
-  int *joint_indices;
-  double *zero_forces;
-  double *zero_accelerations;
-  double *max_forces;
-  double *target_positions;
+void RTTInterfaceTest::stopHook()
+{
+}
 
-  // Initialize sensing variables
-  double *q;
-  double *qd;
-  double *gc;
-  double *M;
+void RTTInterfaceTest::cleanupHook()
+{
+}
 
-  // Initialize acting variables
-  double *cmd_trq;
-  double *cmd_pos;
+// This macro should appear only once per library
+// ORO_CREATE_COMPONENT_LIBRARY()
 
-  double *_use_test_output;
-
-  std::chrono::milliseconds lastms;
-};
+// This macro, as you can see, creates the component. Every component should have this!
+ORO_LIST_COMPONENT_TYPE(cosima::RTTInterfaceTest)

@@ -34,7 +34,9 @@
 using namespace cosima;
 using namespace RTT;
 
-RobotManipulatorBullet::RobotManipulatorBullet(const std::string &name, const unsigned int &model_id, std::shared_ptr<b3CApiWrapperNoGui> sim, RTT::TaskContext *tc) : RobotManipulatorIF(name, tc)
+RobotManipulatorBullet::RobotManipulatorBullet(const std::string &name, const unsigned int &model_id, std::shared_ptr<b3CApiWrapperNoGui> sim, RTT::TaskContext *tc) : RobotManipulatorIF(name, tc),
+                                                                                                                                                                       ctrl_mode_params_4_motor_joints(0,0),
+                                                                                                                                                                       ctrl_mode_params_4_joints(0,0)
 {
     this->sim = sim;
     this->robot_id = model_id;
@@ -53,10 +55,10 @@ void RobotManipulatorBullet::sense()
 
     // b3JointStates2 _joint_states;
     // sim->getJointStates(this->robot_id, _joint_states);
-    for (unsigned int j = 0; j < this->num_joints; j++)
+    for (unsigned int j = 0; j < this->num_motor_joints; j++)
     {
         b3JointSensorState state;
-        bool ret_joint_state = sim->getJointState(this->robot_id, joint_indices[j], &state);
+        bool ret_joint_state = sim->getJointState(this->robot_id, this->vec_motor_joint_indices[j], &state);
         if (!ret_joint_state)
         {
             PRELOG(Fatal, this->tc) << "Joint State computations failed" << RTT::endlog();
@@ -65,10 +67,6 @@ void RobotManipulatorBullet::sense()
         this->q[j] = state.m_jointPosition;
         this->qd[j] = state.m_jointVelocity;
         this->zero_accelerations[j] = 0.0;
-
-        // Convert to eigen data types
-        this->out_jointstate_fdb_var.position[j] = this->q[j];
-        this->out_jointstate_fdb_var.velocity[j] = this->qd[j];
     }
 
     //////////////////////////////////////////////
@@ -80,29 +78,53 @@ void RobotManipulatorBullet::sense()
         PRELOG(Fatal, this->tc) << "Inverse Dynamics computations failed" << RTT::endlog();
         return;
     }
-    for (unsigned int j = 0; j < this->num_joints; j++)
-    {
-        this->out_gc_fdb_var(j) = this->gc[j];
-    }
 
     ///////////////////////////////////////////////
     ///////// Calculate JS Inertia Matrix /////////
     ///////////////////////////////////////////////
 
     // TODO flag? 0 or 1?
-    int ret_mass_calc = sim->calculateMassMatrix(this->robot_id, this->q, this->num_joints, this->M, 0);
+    int ret_mass_calc = sim->calculateMassMatrix(this->robot_id, this->q, this->num_motor_joints, this->M, 0);
     if (ret_mass_calc == 0)
     {
         PRELOG(Fatal, this->tc) << "Mass Matrix computations failed" << RTT::endlog();
         return;
     }
-    for (unsigned int u = 0; u < this->num_joints; u++)
+
+    ////////////////////////////////////////////////////////////////////////
+    ///////// Convert To Eigen And Select Based On Kinematic Chain /////////
+    ////////////////////////////////////////////////////////////////////////
+    unsigned int _tmp_num_joints = index_of_controlled_joint_in_controllable_joints.size();
+    for (unsigned int j = 0; j < _tmp_num_joints; j++)
     {
-        for (unsigned int v = 0; v < this->num_joints; v++)
+        // joint-space position and velocity feedback
+        this->out_jointstate_fdb_var.position[j] = this->q[index_of_controlled_joint_in_controllable_joints[j]];
+        this->out_jointstate_fdb_var.velocity[j] = this->qd[index_of_controlled_joint_in_controllable_joints[j]];
+
+        // joint-space gravitational torques
+        this->out_gc_fdb_var(j) = this->gc[index_of_controlled_joint_in_controllable_joints[j]];
+    }
+
+    // joint-space inertia matrix
+    Eigen::MatrixXd _tmp_inertia_matrix = Eigen::MatrixXd::Zero(this->num_motor_joints, this->num_motor_joints);
+    for (unsigned int u = 0; u < this->num_motor_joints; u++)
+    {
+        for (unsigned int v = 0; v < this->num_motor_joints; v++)
         {
-            this->out_inertia_fdb_var(u, v) = this->M[u * this->num_joints + v];
+            _tmp_inertia_matrix(u, v) = this->M[u * this->num_motor_joints + v];
         }
     }
+
+    for (unsigned int j = 0; j < _tmp_num_joints; j++)
+    {
+        for (unsigned int v = 0; v < _tmp_num_joints; v++)
+        {
+            this->out_inertia_fdb_var(j, v) = _tmp_inertia_matrix(index_of_controlled_joint_in_controllable_joints[j], index_of_controlled_joint_in_controllable_joints[v]);
+        }
+    }
+
+    // RTT::log(RTT::Fatal) << "_tmp_inertia_matrix =\n" << _tmp_inertia_matrix << RTT::endlog();
+    // RTT::log(RTT::Fatal) << "out_inertia_fdb_var =\n" << out_inertia_fdb_var << RTT::endlog();
 }
 
 void RobotManipulatorBullet::writeToOrocos()
@@ -145,12 +167,15 @@ void RobotManipulatorBullet::act()
             // Only if we had a torque-unrelated control mode active
             if ((this->active_control_mode != ControlModes::JointTrqCtrl) && (this->active_control_mode != ControlModes::JointGravComp))
             {
-                // Unlocking the breaks
-                b3RobotSimulatorJointMotorArrayArgs mode_params(CONTROL_MODE_VELOCITY, this->num_joints);
-                mode_params.m_jointIndices = this->joint_indices;
-                mode_params.m_forces = this->zero_forces;
+                // Unlocking the breaks for each controlled joint individually (e.g., ignoring gripper finger etc...)
                 PRELOG(Error, this->tc) << "Releasing the breaks" << RTT::endlog();
-                sim->setJointMotorControlArray(this->robot_id, mode_params);
+                this->ctrl_mode_params_4_joints.m_controlMode = CONTROL_MODE_VELOCITY;
+                // We have to initializ this, because this will not be done by the constructor of the mode itself
+                for (unsigned int j_index_id = 0; j_index_id < this->num_joints; j_index_id++)
+                {
+                    this->ctrl_mode_params_4_joints.m_forces[j_index_id] = 0.0;
+                }
+                sim->setJointMotorControlArray(this->robot_id, this->ctrl_mode_params_4_joints);
 
                 if (this->requested_control_mode == ControlModes::JointTrqCtrl)
                 {
@@ -166,14 +191,14 @@ void RobotManipulatorBullet::act()
         else if (this->requested_control_mode == ControlModes::JointPosCtrl)
         {
             // handle control modes (initial control mode = PD Position)
-            // b3RobotSimulatorJointMotorArrayArgs mode_params(CONTROL_MODE_PD, this->num_joints);
-            b3RobotSimulatorJointMotorArrayArgs mode_params(CONTROL_MODE_POSITION_VELOCITY_PD, this->num_joints);
-            mode_params.m_jointIndices = this->joint_indices;
-            mode_params.m_forces = this->max_forces;
-            // Use current positions to avoid initial jumps
-            mode_params.m_targetPositions = this->q;
             PRELOG(Error, this->tc) << "Switching to JointPosCtrl" << RTT::endlog();
-            sim->setJointMotorControlArray(this->robot_id, mode_params);
+            this->ctrl_mode_params_4_joints.m_controlMode = CONTROL_MODE_POSITION_VELOCITY_PD;
+            for (unsigned int j_index_id = 0; j_index_id < this->num_joints; j_index_id++)
+            {
+                this->ctrl_mode_params_4_joints.m_forces[j_index_id] = this->max_forces[this->index_of_controlled_joint_in_controllable_joints[j_index_id]];
+                this->ctrl_mode_params_4_joints.m_targetPositions[j_index_id] = this->out_jointstate_fdb_var.position[j_index_id];
+            }
+            sim->setJointMotorControlArray(this->robot_id, this->ctrl_mode_params_4_joints);
         }
 
         this->active_control_mode = this->requested_control_mode;
@@ -184,93 +209,89 @@ void RobotManipulatorBullet::act()
     ///////////////////////////////////////////////////////////////
     if (this->active_control_mode == ControlModes::JointGravComp)
     {
-        b3RobotSimulatorJointMotorArrayArgs _mode_params_trq(CONTROL_MODE_TORQUE, this->num_joints);
-        _mode_params_trq.m_jointIndices = this->joint_indices;
-        _mode_params_trq.m_forces = gc;
-        sim->setJointMotorControlArray(this->robot_id, _mode_params_trq);
+        this->ctrl_mode_params_4_joints.m_controlMode = CONTROL_MODE_TORQUE;
+        // this->ctrl_mode_params_4_joints.m_jointIndices = this->joint_indices;
+        // TODO perhaps this can be optimized
+        for (unsigned int j_index_id = 0; j_index_id < this->num_joints; j_index_id++)
+        {
+            this->ctrl_mode_params_4_joints.m_forces[j_index_id] = this->out_gc_fdb_var(j_index_id);
+        }
+        sim->setJointMotorControlArray(this->robot_id, this->ctrl_mode_params_4_joints);
     }
     else if (this->active_control_mode == ControlModes::JointPosCtrl)
     {
-        b3RobotSimulatorJointMotorArrayArgs _mode_params(CONTROL_MODE_POSITION_VELOCITY_PD, this->num_joints);
-        _mode_params.m_jointIndices = this->joint_indices;
-        _mode_params.m_forces = this->max_forces;
+        this->ctrl_mode_params_4_joints.m_controlMode = CONTROL_MODE_POSITION_VELOCITY_PD;
+        // this->ctrl_mode_params_4_joints.m_jointIndices = this->joint_indices;
         ///////////////////////////////////////////////////////////////////////////////
         // TODO THINK ABOUT THE SEMANTIC REGARDING SENDING THE COMMANDS TO THE ROBOT //
         ///////////////////////////////////////////////////////////////////////////////
         if (this->in_JointPositionCtrl_cmd_flow != RTT::NewData)
         {
-            _mode_params.m_targetPositions = this->q;
+            for (unsigned int j_index_id = 0; j_index_id < this->num_joints; j_index_id++)
+            {
+                this->ctrl_mode_params_4_joints.m_targetPositions[j_index_id] = this->out_jointstate_fdb_var.position[j_index_id];
+                this->ctrl_mode_params_4_joints.m_forces[j_index_id] = this->max_forces[this->index_of_controlled_joint_in_controllable_joints[j_index_id]];
+            }
         }
         else
         {
-            _mode_params.m_targetPositions = this->cmd_pos;
+            this->ctrl_mode_params_4_joints.m_targetPositions = this->cmd_pos;
+            for (unsigned int j_index_id = 0; j_index_id < this->num_joints; j_index_id++)
+            {
+                this->ctrl_mode_params_4_joints.m_forces[j_index_id] = this->max_forces[this->index_of_controlled_joint_in_controllable_joints[j_index_id]];
+            }
         }
-        sim->setJointMotorControlArray(this->robot_id, _mode_params);
+        sim->setJointMotorControlArray(this->robot_id, this->ctrl_mode_params_4_joints);
     }
     else if (this->active_control_mode == ControlModes::JointTrqCtrl)
     {
-        // b3RobotSimulatorJointMotorArrayArgs _mode_params_trq(CONTROL_MODE_TORQUE, this->num_joints);
-        // _mode_params_trq.m_jointIndices = this->joint_indices;
-        // ///////////////////////////////////////////////////////////////////////////////
-        // // TODO THINK ABOUT THE SEMANTIC REGARDING SENDING THE COMMANDS TO THE ROBOT //
-        // ///////////////////////////////////////////////////////////////////////////////
-        // if (this->in_JointTorqueCtrl_cmd_flow != RTT::NewData)
-        // {
-        //     _mode_params_trq.m_forces = this->gc;
-        // }
-        // else
-        // {
-        //     _mode_params_trq.m_forces = this->cmd_trq;
-        // }
-        // sim->setJointMotorControlArray(this->robot_id, _mode_params_trq);
-
-        b3RobotSimulatorJointMotorArgs _mode_params_trq(CONTROL_MODE_TORQUE);
-        
+        this->ctrl_mode_params_4_joints.m_controlMode = CONTROL_MODE_TORQUE;
+        // this->ctrl_mode_params_4_joints.m_jointIndices = this->joint_indices;
+        ///////////////////////////////////////////////////////////////////////////////
+        // TODO THINK ABOUT THE SEMANTIC REGARDING SENDING THE COMMANDS TO THE ROBOT //
+        ///////////////////////////////////////////////////////////////////////////////
         if (this->in_JointTorqueCtrl_cmd_flow != RTT::NewData)
         {
-            for (unsigned int j_index_id = 0; j_index_id < 2; j_index_id++)
+            this->ctrl_mode_params_4_joints.m_forces = this->_tmp_calc_on_me; // TODO schein nicht hier dran zu liegen....
+            Eigen::VectorXd outtttttt = this->out_inertia_fdb_var.inverse() * this->out_gc_fdb_var;
+            for (unsigned int j_index_id = 0; j_index_id < this->num_joints; j_index_id++)
             {
-                _mode_params_trq.m_maxTorqueValue = this->gc[j_index_id];
-                sim->setJointMotorControl(this->robot_id, this->joint_indices[j_index_id], _mode_params_trq);
+                this->ctrl_mode_params_4_joints.m_forces[j_index_id] = outtttttt(j_index_id);
             }
         }
         else
         {
-            for (unsigned int j_index_id = 0; j_index_id < 2; j_index_id++)
-            {
-                _mode_params_trq.m_maxTorqueValue = this->cmd_trq[j_index_id];
-                sim->setJointMotorControl(this->robot_id, this->joint_indices[j_index_id], _mode_params_trq);
-            }
+            this->ctrl_mode_params_4_joints.m_forces = this->cmd_trq;
         }
-
+        sim->setJointMotorControlArray(this->robot_id, this->ctrl_mode_params_4_joints);
     }
 }
 
-bool RobotManipulatorBullet::setActiveKinematicChain(const std::vector<std::string> &jointNames)
-{
-    if (jointNames.size() != this->vec_joint_indices.size())
-    {
-        return false;
-    }
-    // check for inconsistent names
-    for (unsigned int i = 0; i < jointNames.size(); i++)
-    {
-        if (map_joint_names_2_indices.count(jointNames[i]))
-        {
-        }
-        else
-        {
-            return false;
-        }
-    }
+// bool RobotManipulatorBullet::setActiveKinematicChain(const std::vector<std::string> &jointNames)
+// {
+//     if (jointNames.size() != this->vec_joint_indices.size())
+//     {
+//         return false;
+//     }
+//     // check for inconsistent names
+//     for (unsigned int i = 0; i < jointNames.size(); i++)
+//     {
+//         if (map_joint_names_2_indices.count(jointNames[i]))
+//         {
+//         }
+//         else
+//         {
+//             return false;
+//         }
+//     }
 
-    for (unsigned int i = 0; i < jointNames.size(); i++)
-    {
-        this->vec_joint_indices[i] = this->map_joint_names_2_indices[jointNames[i]];
-        this->joint_indices[i] = vec_joint_indices[i];
-    }
-    return true;
-}
+//     for (unsigned int i = 0; i < jointNames.size(); i++)
+//     {
+//         this->vec_joint_indices[i] = this->map_joint_names_2_indices[jointNames[i]];
+//         this->joint_indices[i] = vec_joint_indices[i];
+//     }
+//     return true;
+// }
 
 bool RobotManipulatorBullet::setControlMode(const std::string &controlMode)
 {
@@ -314,9 +335,45 @@ bool RobotManipulatorBullet::configure()
             return false;
         }
 
+        ////////////////////////////////////
+        /////// Get All Motor Joints ///////
+        ////////////////////////////////////
+        this->num_motor_joints = 0;
+        vec_motor_joint_indices.clear();
+
+        // Calculate ALL (except fixed) bullet motor joints, which need to be used to receive the data and send the data.
+        // This is different from num_joints, which represents the number of joints that we actually care about!
+        for (unsigned int i = 0; i < _num_bullet_joints; i++)
+        {
+            b3JointInfo jointInfo;
+            sim->getJointInfo(this->robot_id, i, &jointInfo);
+            int qIndex = jointInfo.m_jointIndex;
+            if ((qIndex > -1) && (jointInfo.m_jointType != eFixedType))
+            {
+                this->num_motor_joints++;
+                vec_motor_joint_indices.push_back(qIndex);
+            }
+        }
+
+        // Change bullet collision group
+        for (unsigned int i = 0; i < _num_bullet_joints; i++)
+        {
+            // Configure Collision
+            int collisionFilterGroup_kuka = 0x10;
+            int collisionFilterMask_kuka = 0x1;
+            PRELOG(Error, this->tc) << "Setting collision for bullet link " << i << RTT::endlog();
+            sim->setCollisionFilterGroupMask(this->robot_id, i, collisionFilterGroup_kuka, collisionFilterMask_kuka);
+        }
+
+        ////////////////////////////////////////////////
+        /////// Setup Controlled Kinematic Chain ///////
+        ////////////////////////////////////////////////
+
+        // Find all (non-fixed) bullet joints that make up the kinematic chain (of KDL joints)
         map_joint_names_2_indices.clear();
         vec_joint_indices.clear();
 
+        // Find the right joint indices that match the ones defined by the chosen kinematic chain
         if ((this->kdl_chain.getNrOfJoints() > 0) && (this->kdl_chain.getNrOfSegments() > 0))
         {
             // Select joints accordingly!
@@ -407,19 +464,41 @@ bool RobotManipulatorBullet::configure()
         this->num_joints = vec_joint_indices.size();
         PRELOG(Error, this->tc) << "this->num_joints " << this->num_joints << RTT::endlog();
 
-        // Change bullet collision group
-        for (unsigned int i = 0; i < _num_bullet_joints; i++)
+        // Now find the index of the controlled joints in the list of all controllable (i.e. non-fixed) joints
+        index_of_controlled_joint_in_controllable_joints.clear();
+        index_of_controlled_joint_in_controllable_joints.resize(this->num_joints);
+
+        // Initialize acting variables
+        this->cmd_trq = new double[this->num_joints];
+        this->cmd_pos = new double[this->num_joints];
+
+        this->_tmp_calc_on_me = new double[this->num_joints];
+
+        for (unsigned int cj = 0; cj < this->num_joints; cj++)
         {
-            // Configure Collision
-            int collisionFilterGroup_kuka = 0x10;
-            int collisionFilterMask_kuka = 0x1;
-            PRELOG(Error, this->tc) << "Setting collision for bullet link " << i << RTT::endlog();
-            sim->setCollisionFilterGroupMask(this->robot_id, i, collisionFilterGroup_kuka, collisionFilterMask_kuka);
+            for (unsigned int allj = 0; allj < this->num_motor_joints; allj++)
+            {
+                if (vec_motor_joint_indices[cj] == vec_joint_indices[allj])
+                {
+                    index_of_controlled_joint_in_controllable_joints[cj] = allj;
+                    break;
+                }
+            }
+
+            this->cmd_trq[cj] = 0.0;
+            this->cmd_pos[cj] = 0.0;
+
+            this->_tmp_calc_on_me[cj] = 0.0;
         }
 
+        ////////////////////////////
+        /////// Sensor Setup ///////
+        ////////////////////////////
+
+        // TODO !!!
         // Add force torque sensor at EEF (i 8, m_jointIndex 8, m_jointName iiwa7_joint_ee, m_parentIndex 7)
-        PRELOG(Error, this->tc) << "Attaching F/T sensor to link idx " << (this->num_joints - 1) << " at bullet idx " << this->vec_joint_indices[this->num_joints - 1] << RTT::endlog();
-        sim->enableJointForceTorqueSensor(this->robot_id, this->vec_joint_indices[this->num_joints - 1], true); // Attach to last link
+        // PRELOG(Error, this->tc) << "Attaching F/T sensor to link idx " << (this->num_joints - 1) << " at bullet idx " << this->vec_joint_indices[this->num_joints - 1] << RTT::endlog();
+        // sim->enableJointForceTorqueSensor(this->robot_id, this->vec_joint_indices[this->num_joints - 1], true); // Attach to last link
 
         // // Show debug line to see where the F/T was attached!
         // b3RobotSimulatorAddUserDebugLineArgs _dLine_args;
@@ -440,25 +519,25 @@ bool RobotManipulatorBullet::configure()
         // _to_xyz[2] = 0.0;
         // sim->addUserDebugLine(_from_xyz, _to_xyz, _dLine_args);
 
-        // Initialize helper variables
-        this->joint_indices = new int[this->num_joints];
-        this->zero_forces = new double[this->num_joints];
-        this->zero_accelerations = new double[this->num_joints];
-        this->max_forces = new double[this->num_joints];
-        this->target_positions = new double[this->num_joints];
+        ///////////////////////////////////////
+        /////// Variable Initialization ///////
+        ///////////////////////////////////////
+
+        // Initialize helper variables (Here we need to initialize with the actual motor indices)
+        this->joint_indices = new int[this->num_motor_joints];
+        this->zero_forces = new double[this->num_motor_joints];
+        this->zero_accelerations = new double[this->num_motor_joints];
+        this->max_forces = new double[this->num_motor_joints];
+        this->target_positions = new double[this->num_motor_joints];
 
         // Initialize sensing variables
-        this->q = new double[this->num_joints];
-        this->qd = new double[this->num_joints];
-        this->gc = new double[this->num_joints];
-        int byteSizeDofCountDouble = sizeof(double) * this->num_joints;
-        this->M = (double *)malloc(this->num_joints * byteSizeDofCountDouble);
+        this->q = new double[this->num_motor_joints];
+        this->qd = new double[this->num_motor_joints];
+        this->gc = new double[this->num_motor_joints];
+        int byteSizeDofCountDouble = sizeof(double) * this->num_motor_joints;
+        this->M = (double *)malloc(this->num_motor_joints * byteSizeDofCountDouble);
 
-        // Initialize acting variables
-        this->cmd_trq = new double[this->num_joints];
-        this->cmd_pos = new double[this->num_joints];
-
-        for (unsigned int i = 0; i < this->num_joints; i++)
+        for (unsigned int i = 0; i < this->num_motor_joints; i++)
         {
             this->joint_indices[i] = vec_joint_indices[i];
             this->zero_forces[i] = 0.0;
@@ -469,24 +548,28 @@ bool RobotManipulatorBullet::configure()
             this->q[i] = 0.0;
             this->qd[i] = 0.0;
             this->gc[i] = 0.0;
-            for (unsigned int j = 0; j < this->num_joints; j++)
+            for (unsigned int j = 0; j < this->num_motor_joints; j++)
             {
-                this->M[i * this->num_joints + j] = 0.0;
+                this->M[i * this->num_motor_joints + j] = 0.0;
             }
-            this->cmd_trq[i] = 0.0;
-            this->cmd_pos[i] = 0.0;
-
             // sim->resetJointState(this->robot_id, this->joint_indices[i], 0.0);
             PRELOG(Error, this->tc) << "Resetting joint [" << i << "] = " << this->joint_indices[i] << RTT::endlog();
         }
 
-        b3RobotSimulatorJointMotorArrayArgs _mode_params(CONTROL_MODE_POSITION_VELOCITY_PD, this->num_joints);
-        _mode_params.m_jointIndices = this->joint_indices;
-        _mode_params.m_forces = this->max_forces;
+        // Initialize the global control parameters (This could perhaps evolve into a memory leak, if the arrays are not freed when stopped!)
+        this->ctrl_mode_params_4_joints = b3RobotSimulatorJointMotorArrayArgs(CONTROL_MODE_VELOCITY, this->num_joints);
+        this->ctrl_mode_params_4_joints.m_jointIndices = this->joint_indices;
+        this->ctrl_mode_params_4_joints.m_forces = new double[this->ctrl_mode_params_4_joints.m_numControlledDofs];
+        this->ctrl_mode_params_4_joints.m_targetPositions = new double[this->ctrl_mode_params_4_joints.m_numControlledDofs];
+
+        this->ctrl_mode_params_4_motor_joints = b3RobotSimulatorJointMotorArrayArgs(CONTROL_MODE_POSITION_VELOCITY_PD, this->num_motor_joints);
+        // Set control mode initially for all the controllable joints
+        this->ctrl_mode_params_4_motor_joints.m_jointIndices = this->joint_indices;
+        this->ctrl_mode_params_4_motor_joints.m_forces = this->max_forces;
         // Use current positions to avoid initial jumps
-        _mode_params.m_targetPositions = this->q;
+        this->ctrl_mode_params_4_motor_joints.m_targetPositions = this->q;
         PRELOG(Error, this->tc) << "Switching to JointPosCtrl" << RTT::endlog();
-        sim->setJointMotorControlArray(this->robot_id, _mode_params);
+        sim->setJointMotorControlArray(this->robot_id, this->ctrl_mode_params_4_motor_joints);
 
         this->active_control_mode = ControlModes::JointPosCtrl;
         this->requested_control_mode = ControlModes::JointPosCtrl;
@@ -501,7 +584,7 @@ bool RobotManipulatorBullet::configure()
     return true;
 }
 
-bool RobotManipulatorBullet::setBasePosition(const double& x, const double& y, const double& z)
+bool RobotManipulatorBullet::setBasePosition(const double &x, const double &y, const double &z)
 {
     if (sim->isConnected())
     {
@@ -512,7 +595,7 @@ bool RobotManipulatorBullet::setBasePosition(const double& x, const double& y, c
         {
             return false;
         }
-        _basePosition = btVector3(x,y,z);
+        _basePosition = btVector3(x, y, z);
         return sim->resetBasePositionAndOrientation(this->robot_id, _basePosition, _baseOrientation);
     }
     else
