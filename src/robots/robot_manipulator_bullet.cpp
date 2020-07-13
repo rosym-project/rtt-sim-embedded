@@ -246,17 +246,15 @@ void RobotManipulatorBullet::act()
     else if (this->active_control_mode == ControlModes::JointTrqCtrl)
     {
         this->ctrl_mode_params_4_joints.m_controlMode = CONTROL_MODE_TORQUE;
-        // this->ctrl_mode_params_4_joints.m_jointIndices = this->joint_indices;
         ///////////////////////////////////////////////////////////////////////////////
         // TODO THINK ABOUT THE SEMANTIC REGARDING SENDING THE COMMANDS TO THE ROBOT //
         ///////////////////////////////////////////////////////////////////////////////
         if (this->in_JointTorqueCtrl_cmd_flow != RTT::NewData)
         {
-            this->ctrl_mode_params_4_joints.m_forces = this->_tmp_calc_on_me; // TODO schein nicht hier dran zu liegen....
-            Eigen::VectorXd outtttttt = this->out_inertia_fdb_var.inverse() * this->out_gc_fdb_var;
+            this->ctrl_mode_params_4_joints.m_forces = this->_tmp_calc_on_me; // TODO I don't think this is necessary...
             for (unsigned int j_index_id = 0; j_index_id < this->num_joints; j_index_id++)
             {
-                this->ctrl_mode_params_4_joints.m_forces[j_index_id] = outtttttt(j_index_id);
+                this->ctrl_mode_params_4_joints.m_forces[j_index_id] = this->out_gc_fdb_var(j_index_id);
             }
         }
         else

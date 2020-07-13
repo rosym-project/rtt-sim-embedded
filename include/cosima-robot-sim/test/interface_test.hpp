@@ -41,9 +41,9 @@
 #include <bullet/LinearMath/btQuaternion.h>
 
 // Bullet-Specific includes
-// #include "../simulator_interface/bullet/b3_capi_wrapper_no_gui.hpp"
+#include "../simulator_interface/bullet/b3_capi_wrapper_no_gui.hpp"
 
-#include "b3RobotSimulatorClientAPI.hpp"
+// #include "b3RobotSimulatorClientAPI.hpp"
 
 #include <chrono>
 
@@ -53,9 +53,8 @@ public:
   TestInterface();
   void loop();
 
-  // std::shared_ptr<b3CApiWrapperNoGui> sim;
-  std::shared_ptr<b3RobotSimulatorClientAPI> sim;
-
+  std::shared_ptr<b3CApiWrapperNoGui> sim;
+  // std::shared_ptr<b3RobotSimulatorClientAPI> sim;
 
 private:
   int num_joints;
@@ -82,4 +81,9 @@ private:
   double *_use_test_output;
 
   std::chrono::milliseconds lastms;
+
+  Eigen::VectorXd fdb_position;
+  Eigen::VectorXd fdb_velocity;
+  Eigen::VectorXd fdb_gc;
+  Eigen::MatrixXd fdb_inertia;
 };
