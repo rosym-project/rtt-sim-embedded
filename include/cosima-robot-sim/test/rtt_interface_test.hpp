@@ -26,64 +26,36 @@
 
 #pragma once
 
+#include <rtt/Port.hpp>
+#include <rtt/TaskContext.hpp>
+#include <rtt/os/Timer.hpp>
+#include <rtt/os/Thread.hpp>
+#include <rtt/os/Semaphore.hpp>
 #include <string>
 
 #include <Eigen/Dense>
 #include <iostream>
 
-#include <memory>
+#include "interface_test.hpp"
 
-// For nanosleep
-#include <time.h>
-
-#include <bullet/LinearMath/btAlignedObjectArray.h>
-#include <bullet/LinearMath/btVector3.h>
-#include <bullet/LinearMath/btQuaternion.h>
-
-// Bullet-Specific includes
-#include "../simulator_interface/bullet/b3_capi_wrapper_no_gui.hpp"
-
-// #include "b3RobotSimulatorClientAPI.hpp"
-
-#include <chrono>
-
-class TestInterface
+namespace cosima
 {
-public:
-  TestInterface();
-  void loop();
 
-  std::shared_ptr<b3CApiWrapperNoGui> sim;
-  // std::shared_ptr<b3RobotSimulatorClientAPI> sim;
+  class RTTInterfaceTest : public RTT::TaskContext
+  {
+  public:
+    RTTInterfaceTest(std::string const &name);
 
-private:
-  int num_joints;
-  double last_time;
-  std::vector<int> vec_joint_indices;
-  int model_id;
+    bool configureHook();
+    bool startHook();
+    void updateHook();
+    void stopHook();
+    void cleanupHook();
 
-  int *joint_indices;
-  double *zero_forces;
-  double *zero_accelerations;
-  double *max_forces;
-  double *target_positions;
+  private:
 
-  // Initialize sensing variables
-  double *q;
-  double *qd;
-  double *gc;
-  double *M;
+    TestInterface it;
 
-  // Initialize acting variables
-  double *cmd_trq;
-  double *cmd_pos;
+  };
 
-  double *_use_test_output;
-
-  std::chrono::milliseconds lastms;
-
-  Eigen::VectorXd fdb_position;
-  Eigen::VectorXd fdb_velocity;
-  Eigen::VectorXd fdb_gc;
-  Eigen::MatrixXd fdb_inertia;
-};
+} // namespace cosima

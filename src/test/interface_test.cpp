@@ -28,11 +28,17 @@
 
 #include <unistd.h>
 
+using namespace std::chrono;
+
 TestInterface::TestInterface()
 {
     sim = std::shared_ptr<b3CApiWrapperNoGui>(new b3CApiWrapperNoGui());
+    // sim = std::shared_ptr<b3RobotSimulatorClientAPI>(new b3RobotSimulatorClientAPI());
+
+    lastms = milliseconds();
 
     bool isConnected = sim->connect(eCONNECT_SHARED_MEMORY);
+    // bool isConnected = sim->connect(eCONNECT_GUI_SERVER);
 
     if (isConnected)
     {
@@ -57,7 +63,7 @@ TestInterface::TestInterface()
     // _args.m_flags = URDF_USE_INERTIA_FROM_FILE | URDF_USE_SELF_COLLISION;
     _args.m_flags = URDF_USE_INERTIA_FROM_FILE;
 
-    model_id = sim->loadURDF("/home/dwigand/code/cogimon/CoSimA/pyBullet/catkin_py_ws/src/py-flex-assembly/gym_flexassembly/data/kuka-iiwa-7-egp-40/model.urdf", _args);
+    model_id = sim->loadURDF("/home/dwigand/code/cogimon/CoSimA/pyBullet/catkin_py_ws/src/py-flex-assembly/gym_flexassembly/data/kuka-iiwa-7/model.urdf", _args);
     if (model_id >= 0)
     {
         std::cout << "Loaded Urdf. Received model_id = " << model_id << std::endl;
@@ -121,6 +127,8 @@ TestInterface::TestInterface()
     max_forces = new double[num_joints];
     target_positions = new double[num_joints];
 
+    _use_test_output = new double[num_joints];
+
     // Initialize sensing variables
     q = new double[num_joints];
     qd = new double[num_joints];
@@ -150,6 +158,8 @@ TestInterface::TestInterface()
         cmd_trq[i] = 0.0;
         cmd_pos[i] = 0.0;
 
+        _use_test_output[i] = 0.0;
+
         // sim->resetJointState(model_id, joint_indices[i], 0.0);
         std::cout << "Resetting joint [" << i << "] = " << joint_indices[i] << std::endl;
     }
@@ -170,19 +180,60 @@ TestInterface::TestInterface()
     mode_params.m_forces = zero_forces;
     std::cout << "Releasing the breaks" << std::endl;
     sim->setJointMotorControlArray(model_id, mode_params);
+
+    sim->setRealTimeSimulation(false);
+    sim->setTimeStep(0.001);
+    sim->setGravity(btVector3(0, 0, -9.81));
+
+    fdb_position = Eigen::VectorXd::Zero(num_joints);
+    fdb_velocity = Eigen::VectorXd::Zero(num_joints);
+    fdb_gc = Eigen::VectorXd::Zero(num_joints);
+    fdb_inertia = Eigen::MatrixXd::Zero(num_joints, num_joints);
 }
 
 void TestInterface::loop()
 {
+    Eigen::VectorXd qDes = Eigen::VectorXd::Zero(7);
+    qDes(0) = 0.0;
+    qDes(1) = 1.2;
+    qDes(2) = 0.0;
+    qDes(3) = -1.0;
+    qDes(4) = 0.0;
+    qDes(5) = 0.3;
+    qDes(6) = 0.0;
 
+    Eigen::VectorXd qError = Eigen::VectorXd::Zero(num_joints);
+    Eigen::VectorXd qdError = Eigen::VectorXd::Zero(num_joints);
+    for (unsigned int i = 0; i < num_joints; i++)
+    {
+        qError(i) = qDes(i) - fdb_position(i);
+        qdError(i) = 0 - fdb_velocity(i);
+    }
+
+    double timestamp = 0.001; //((double)(ms.count() - lastms.count())) * 1E-6;
+
+    // Eigen::VectorXd outtt = fdb_inertia.inverse() * fdb_gc;
+
+    Eigen::MatrixXd Kd = (80 * Eigen::VectorXd::Ones(num_joints)).asDiagonal();
+
+    Eigen::VectorXd pd = ((200 * Eigen::VectorXd::Ones(num_joints)).asDiagonal()) * qError.matrix() + Kd * qdError.matrix();
+
+    Eigen::MatrixXd mmm = fdb_inertia + Kd * timestamp;
+
+    Eigen::VectorXd qddot = mmm.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(-fdb_gc + pd);
+
+    Eigen::VectorXd out_torques_var = pd - (Kd * qddot) * timestamp + fdb_gc;
+
+    milliseconds ms = duration_cast<milliseconds>(system_clock::now().time_since_epoch());
+
+    if ((ms.count() - lastms.count()) < 1)
+    {
+        return;
+    }
+    lastms = ms;
     ///////////////////////////////////////////////
     //////////////////// SENSE ////////////////////
     ///////////////////////////////////////////////
-
-    Eigen::VectorXd fdb_position = Eigen::VectorXd::Zero(num_joints);
-    Eigen::VectorXd fdb_velocity = Eigen::VectorXd::Zero(num_joints);
-    Eigen::VectorXd fdb_gc = Eigen::VectorXd::Zero(num_joints);
-    Eigen::MatrixXd fdb_inertia = Eigen::MatrixXd::Zero(num_joints, num_joints);
 
     ////////////////////////////////////////////////////
     ///////// Get Joint States from Simulation /////////
@@ -251,7 +302,18 @@ void TestInterface::loop()
 
     b3RobotSimulatorJointMotorArrayArgs _mode_params_trq(CONTROL_MODE_TORQUE, num_joints);
     _mode_params_trq.m_jointIndices = joint_indices;
-    _mode_params_trq.m_forces = gc;
+    _mode_params_trq.m_forces = _use_test_output;
+
+    // for (unsigned int i = 0; i < num_joints; i++)
+    // {
+    //     out_torques_var(i) = -10 * in_robotstatus_var.position[i] -1.5 * in_robotstatus_var.velocity[i] + in_coriolisAndGravity_var(i);
+    // }
+
+    for (unsigned int v = 0; v < num_joints; v++)
+    {
+        // _mode_params_trq.m_forces[v] = -10 * fdb_position(v) -1.5 * fdb_velocity(v);
+        _mode_params_trq.m_forces[v] = out_torques_var(v);
+    }
     sim->setJointMotorControlArray(model_id, _mode_params_trq);
 
     // Step Simulation

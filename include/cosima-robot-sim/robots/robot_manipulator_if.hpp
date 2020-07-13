@@ -74,7 +74,7 @@ namespace cosima
         virtual void act() = 0;
 
         virtual bool setControlMode(const std::string &controlMode) = 0;
-        virtual bool setActiveKinematicChain(const std::vector<std::string> &jointNames) = 0;
+        // virtual bool setActiveKinematicChain(const std::vector<std::string> &jointNames) = 0;
         virtual void readFromOrocos() = 0;
         virtual void writeToOrocos() = 0;
 

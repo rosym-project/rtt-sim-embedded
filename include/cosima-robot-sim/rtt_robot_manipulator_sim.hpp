@@ -79,12 +79,7 @@ namespace cosima
 
     bool defineKinematicChain(const std::string &modelName, const std::string &urdf, const std::string &chain_root_link_name, const std::string &chain_tip_link_name);
 
-    bool setBasePosition(const std::string &modelName, const double& x, const double& y, const double& z);
-
-    bool setUpdatePeriod(double period);
-
-    // Update hook for thread
-    void simUpdateHook();
+    bool setBasePosition(const std::string &modelName, const double &x, const double &y, const double &z);
 
 #ifndef DISABLE_BULLET
     bool connectBullet();
@@ -105,42 +100,7 @@ namespace cosima
     std::shared_ptr<GazeboInterface> gazebo_interface;
 #endif
 
-    // std::map<unsigned int, std::shared_ptr<RobotManipulatorIF>> map_robot_manipulators;
     std::map<std::string, std::shared_ptr<RobotManipulatorIF>> map_robot_manipulators;
-
-    struct timespec req;
-    double my_period;
-
-    double last_time;
-
-    //! An RTT thread class for low level IO
-    class BulletSimThread : public RTT::os::Thread
-    {
-    public:
-      BulletSimThread(RTTRobotManipulatorSim* owner);
-      RTTRobotManipulatorSim* owner_;
-    protected:
-      virtual bool initialize();
-      virtual void loop();
-      virtual void step();
-      virtual bool breakLoop();
-      virtual void finalize();
-
-      RTT::os::Semaphore break_loop_sem_;
-      RTT::os::Semaphore done_sem_;
-    };
-
-    boost::shared_ptr<BulletSimThread> bullet_sim_thread_;
-    // Threading synchronization
-    RTT::os::Semaphore new_state_sem_;
-    RTT::os::Semaphore new_cmd_sem_;
-    
-    bool new_state_;
-    RTT::os::Mutex new_state_mutex_;
-    RTT::os::Condition new_state_cond_;
-
-    bool new_cmd_;
-    RTT::os::Mutex new_cmd_mutex_;
   };
 
 } // namespace cosima
