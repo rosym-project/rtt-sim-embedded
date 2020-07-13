@@ -62,7 +62,7 @@ namespace cosima
         void readFromOrocos();
         void writeToOrocos();
 
-        bool setBasePosition(const double& x, const double& y, const double& z);
+        bool setBasePosition(const double &x, const double &y, const double &z);
 
         InterfaceType getInterfaceType();
 
@@ -98,6 +98,37 @@ namespace cosima
         b3RobotSimulatorJointMotorArrayArgs ctrl_mode_params_4_motor_joints, ctrl_mode_params_4_joints;
 
         double *_tmp_calc_on_me;
+
+        struct Prismatic2FingerGripper
+        {
+            double closing_vel;
+            double opening_vel;
+            double max_force;
+
+            std::string finger_1_joint_name;
+            std::string finger_2_joint_name;
+
+            b3RobotSimulatorJointMotorArrayArgs target_params;
+
+            Prismatic2FingerGripper()
+                : target_params(CONTROL_MODE_VELOCITY, 2),
+                  closing_vel(0.1),
+                  opening_vel(0.1),
+                  max_force(10.0)
+            {
+                // TODO I could shift the initialization of the arrays into here...
+            }
+        };
+
+        std::shared_ptr<Prismatic2FingerGripper> gripper_pointer;
+
+        bool setupGripper(const unsigned int &_num_bullet_joints);
+
+        double gripper_command_vel, gripper_max_force;
+        void setGripperCommand(const double &vel_cmd, const double &max_force);
+
+        // TODO Should perhaps be outsourced
+        void initialize2FingerPrismaticGripper(const std::string &finger_1_joint_name, const std::string &finger_2_joint_name);
     };
 
 } // namespace cosima
