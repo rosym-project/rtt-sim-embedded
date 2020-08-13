@@ -73,7 +73,7 @@
   <!-- <exec_depend>geometry_msgs</exec_depend> -->
   <exec_depend>sensor_msgs</exec_depend>
 
-  <depend version_gte="1.3.0">orocos_kdl</depend>
+  <depend>liborocos-kdl-dev</depend>
   <build_depend>kdl_parser</build_depend>
 
 

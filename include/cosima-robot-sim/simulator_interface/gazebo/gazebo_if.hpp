@@ -26,6 +26,8 @@
 
 #pragma once
 
+#ifndef DISABLE_GAZEBO
+
 #include <string>
 #include <iostream>
 
@@ -62,3 +64,5 @@ namespace cosima
     };
 
 } // namespace cosima
+
+#endif

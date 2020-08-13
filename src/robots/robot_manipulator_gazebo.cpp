@@ -25,6 +25,8 @@
  *     Bielefeld University
  *
  * ============================================================ */
+ 
+#ifndef DISABLE_GAZEBO
 
 #include "../include/cosima-robot-sim/robots/robot_manipulator_gazebo.hpp"
 #include <rtt/Component.hpp> // needed for the macro at the end of this file
@@ -380,3 +382,5 @@ bool RobotManipulatorGazebo::configure()
 
     return RobotManipulatorIF::configure();
 }
+
+#endif
