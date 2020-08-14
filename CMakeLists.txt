@@ -68,15 +68,25 @@ if (GAZEBO_FOUND)
   include_directories(${GAZEBO_INCLUDE_DIRS})
 endif()
 
-find_package(Bullet7 REQUIRED)
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules")
+
+find_package(Bullet REQUIRED)
 if (NOT BULLET_FOUND)
   message (FATAL_ERROR "\nCould not find Bullet.")
   #SET(DISABLE_BULLET TRUE)
+else()
+  message(STATUS "Version of Bullet too old or not available: disabling Bullet collision detection plugin. Try using Ubuntu 18.04 or later.")
 endif()
-
 include_directories (${BULLET_INCLUDE_DIRS})
-link_directories    ("/home/flexassembly/system/orocos-2.9_ws/install/lib/")
-# TODO how to get rid of this?
+link_directories    (${BULLET_LIBRARY_DIRS})
+
+
+
+#message(ERROR "BULLET_LIBRARIES = ${BULLET_LIBRARIES}")
+#message(ERROR "BULLET_INCLUDE_DIRS = ${BULLET_INCLUDE_DIRS}")
+#message(ERROR "BULLET_LIBRARY_DIRS = ${BULLET_LIBRARY_DIRS}")
+#BulletSoftBody;BulletDynamics;BulletCollision;LinearMath
+
 
 find_package(Eigen3 REQUIRED)
 include_directories(${EIGEN3_INCLUDE_DIRS})
@@ -176,7 +186,18 @@ orocos_generate_package(
 
 # TEST interface
 add_executable (interface_test ${PROJECT_SOURCE_DIR}/src/test/interface_test.cpp ${PROJECT_SOURCE_DIR}/src/simulator_interface/bullet/b3_capi_wrapper_no_gui.cpp ${PROJECT_SOURCE_DIR}/src/test/b3RobotSimulatorClientAPI_NoDirect.cpp ${PROJECT_SOURCE_DIR}/src/test/b3RobotSimulatorClientAPI_NoGUI.cpp ${PROJECT_SOURCE_DIR}/src/test/b3RobotSimulatorClientAPI.cpp)
-target_link_libraries(interface_test ${EIGEN3_LIBRARIES} ${BULLET_LIBRARIES})
+target_link_libraries(interface_test ${EIGEN3_LIBRARIES} ${BULLET_LIBRARIES}
+LinearMath
+Bullet3Common
+BulletInverseDynamics
+BulletCollision
+BulletDynamics
+BulletSoftBody
+BulletRobotics
+BulletExampleBrowserLib
+BulletRoboticsGUI
+gwen
+)
 
 
 ## Rename C++ executable without prefix

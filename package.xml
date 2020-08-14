@@ -3,29 +3,13 @@
   <name>cosima-robot-sim</name>
   <version>0.1.0</version>
   <description>The cosima-robot-sim package</description>
-
-  <!-- One maintainer tag required, multiple allowed, one person per tag -->
-  <!-- Example:  -->
-  <!-- <maintainer email="jane.doe@example.com">Jane Doe</maintainer> -->
   <maintainer email="dwigand@cor-lab.de">Dennis Leroy Wigand</maintainer>
-
-
-  <!-- One license tag required, multiple allowed, one license per tag -->
-  <!-- Commonly used license strings: -->
-  <!--   BSD, MIT, Boost Software License, GPLv2, GPLv3, LGPLv2.1, LGPLv3 -->
-  <license>GPLv3</license>
-
-
+  <license>LGPLv3</license>
   <!-- Url tags are optional, but multiple are allowed, one per tag -->
   <!-- Optional attribute type can be: website, bugtracker, or repository -->
   <!-- Example: -->
   <!-- <url type="website">http://wiki.ros.org/cosima-robot-sim</url> -->
-
-
-  <!-- Author tags are optional, multiple are allowed, one per tag -->
-  <!-- Authors do not have to be maintainers, but could be -->
-  <!-- Example: -->
-  <!-- <author email="jane.doe@example.com">Jane Doe</author> -->
+  <author email="dwigand@cor-lab.de">Dennis Leroy Wigand</author>
 
 
   <!-- The *depend tags are used to specify dependencies -->
