@@ -144,6 +144,7 @@ bool BulletInterface::connect()
 
 bool BulletInterface::connectToExternallySpawnedRobot(const std::string &modelName, const unsigned int &modelId)
 {
+    // TODO DLW also modify the collision parameters and take care of the F/T sensors that are present if we can find that out?
     btVector3 basePosition = btVector3(0, 0, 0);
     btQuaternion baseOrientation = btQuaternion(0, 0, 0, 1);
     bool ret = sim->getBasePositionAndOrientation(modelId, basePosition, baseOrientation);

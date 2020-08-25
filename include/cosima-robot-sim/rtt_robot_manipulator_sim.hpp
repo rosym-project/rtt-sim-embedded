@@ -55,6 +55,9 @@
 // For nanosleep
 #include <time.h>
 
+// ROS include for parameter server
+#include <ros/ros.h>
+
 namespace cosima
 {
 
@@ -73,6 +76,8 @@ namespace cosima
     int spawnRobotAtPos(const std::string &modelName, const std::string &modelURDF, const Eigen::VectorXd &pos, const std::string &simulator);
     int spawnRobot(const std::string &modelName, const std::string &modelURDF, const std::string &simulator);
     bool connectToExternallySpawnedRobot(const std::string &modelName, const unsigned int &modelId, const std::string &simulator);
+
+    bool connectToRobotByName(const std::string &modelName, const std::string &simulator);
 
     bool setControlMode(const std::string &modelName, const std::string &controlMode);
     bool setActiveKinematicChain(const std::vector<std::string> &jointNames);
