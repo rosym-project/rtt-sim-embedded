@@ -23,6 +23,8 @@
  *     Bielefeld University
  *
  * ============================================================ */
+ 
+#ifndef DISABLE_GAZEBO
 
 #include "../include/cosima-robot-sim/simulator_interface/gazebo/gazebo_if.hpp"
 #include <rtt/Logger.hpp>
@@ -120,3 +122,5 @@ bool GazeboInterface::connectToExternallySpawnedRobot(const std::string &modelNa
     PRELOG(Error) << "Model [" << modelName << "] NOT found!" << RTT::endlog();
     return false;
 }
+
+#endif

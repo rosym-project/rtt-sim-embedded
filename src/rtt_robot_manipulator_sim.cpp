@@ -70,6 +70,8 @@ RTTRobotManipulatorSim::RTTRobotManipulatorSim(std::string const &name) : RTT::T
 
         addOperation("connectToExternallySpawnedRobot", &RTTRobotManipulatorSim::connectToExternallySpawnedRobot, this, RTT::OwnThread);
 
+        addOperation("connectToRobotByName", &RTTRobotManipulatorSim::connectToRobotByName, this, RTT::OwnThread);
+
         addOperation("spawnRobotAtPos", &RTTRobotManipulatorSim::spawnRobotAtPos, this, RTT::OwnThread);
 
         addOperation("defineKinematicChain", &RTTRobotManipulatorSim::defineKinematicChain, this, RTT::OwnThread);
@@ -239,6 +241,56 @@ bool RTTRobotManipulatorSim::connectToExternallySpawnedRobot(const std::string &
             map_robot_manipulators[modelName] = robot;
             return true;
         }
+    }
+#endif
+    return false;
+}
+
+bool RTTRobotManipulatorSim::connectToRobotByName(const std::string &modelName, const std::string &simulator)
+{
+    if (map_robot_manipulators.count(modelName))
+    {
+        PRELOG(Warning) << "A robot with this name (" << modelName << ") is already registered!" << RTT::endlog();
+        return false;
+    }
+#ifndef DISABLE_BULLET
+    if (simulator.compare("bullet") == 0)
+    {
+        // Get id from ROS parameter service
+        if (ros::param::has("robot_map"))
+        {
+            std::map<std::string,int> map_s;
+            if (ros::param::get("robot_map", map_s))
+            {
+                for (auto const& x : map_s)
+                {
+                    if (x.first.compare(modelName) == 0)
+                    {
+                        PRELOG(Error) << "Connecting to " << x.first << " with id " << x.second << RTT::endlog();
+                        return this->connectToExternallySpawnedRobot(modelName, x.second, simulator);
+                    }
+                }
+            }
+            else
+            {
+                PRELOG(Error) << "robot_map could not be read from server!" << RTT::endlog();
+                return false;
+            }
+        }
+        else
+        {
+            PRELOG(Error) << "robot_map not found on server!" << RTT::endlog();
+            return false;
+        }
+        PRELOG(Error) << "robot name not found in robot_map on server!" << RTT::endlog();
+        return false;
+    }
+#endif
+
+#ifndef DISABLE_GAZEBO
+    if (simulator.compare("gazebo") == 0)
+    {
+        return this->connectToExternallySpawnedRobot(modelName, modelId, simulator);
     }
 #endif
     return false;

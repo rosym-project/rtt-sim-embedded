@@ -26,6 +26,8 @@
  *
  * ============================================================ */
 
+#ifndef DISABLE_GAZEBO
+
 #pragma once
 
 #include <rtt/Port.hpp>
@@ -128,3 +130,5 @@ namespace cosima
     };
 
 } // namespace cosima
+
+#endif

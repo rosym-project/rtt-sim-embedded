@@ -3,29 +3,13 @@
   <name>cosima-robot-sim</name>
   <version>0.1.0</version>
   <description>The cosima-robot-sim package</description>
-
-  <!-- One maintainer tag required, multiple allowed, one person per tag -->
-  <!-- Example:  -->
-  <!-- <maintainer email="jane.doe@example.com">Jane Doe</maintainer> -->
   <maintainer email="dwigand@cor-lab.de">Dennis Leroy Wigand</maintainer>
-
-
-  <!-- One license tag required, multiple allowed, one license per tag -->
-  <!-- Commonly used license strings: -->
-  <!--   BSD, MIT, Boost Software License, GPLv2, GPLv3, LGPLv2.1, LGPLv3 -->
-  <license>GPLv3</license>
-
-
+  <license>LGPLv3</license>
   <!-- Url tags are optional, but multiple are allowed, one per tag -->
   <!-- Optional attribute type can be: website, bugtracker, or repository -->
   <!-- Example: -->
   <!-- <url type="website">http://wiki.ros.org/cosima-robot-sim</url> -->
-
-
-  <!-- Author tags are optional, multiple are allowed, one per tag -->
-  <!-- Authors do not have to be maintainers, but could be -->
-  <!-- Example: -->
-  <!-- <author email="jane.doe@example.com">Jane Doe</author> -->
+  <author email="dwigand@cor-lab.de">Dennis Leroy Wigand</author>
 
 
   <!-- The *depend tags are used to specify dependencies -->
@@ -52,37 +36,38 @@
 
   <build_depend>rtt</build_depend>
   <build_depend>ocl</build_depend>
-  <!-- <build_depend>rtt_ros</build_depend> -->
 
-  <!-- <run_depend>rtt</run_depend>
-  <run_depend>ocl</run_depend>
-  <run_depend>rtt_ros</run_depend> -->
-
-  <build_depend>roscpp</build_depend>
+  <!-- <build_depend>roscpp</build_depend> -->
   <build_depend>std_msgs</build_depend>
   <!-- <build_depend>geometry_msgs</build_depend> -->
   <build_depend>sensor_msgs</build_depend>
 
-  <build_export_depend>roscpp</build_export_depend>
+  <!-- <build_export_depend>roscpp</build_export_depend> -->
   <build_export_depend>std_msgs</build_export_depend>
   <!-- <build_export_depend>geometry_msgs</build_export_depend> -->
   <build_export_depend>sensor_msgs</build_export_depend>
 
-  <exec_depend>roscpp</exec_depend>
+  <!-- <exec_depend>roscpp</exec_depend> -->
   <exec_depend>std_msgs</exec_depend>
   <!-- <exec_depend>geometry_msgs</exec_depend> -->
   <exec_depend>sensor_msgs</exec_depend>
 
-  <depend version_gte="1.3.0">orocos_kdl</depend>
+  <depend>liborocos-kdl-dev</depend>
   <build_depend>kdl_parser</build_depend>
+
+  <depend>rtt_ros</depend>
+  <depend>roscpp</depend>
+  <!-- <build_depend>eigen</build_depend>
+  <build_export_depend>eigen</build_export_depend> -->
 
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>
-    <!-- Other tools can request additional information be placed here -->
-    <!-- <rtt_ros> -->
-      <!-- Plugin deps are loaded automatically by the rtt_ros import service -->
-      <!-- <plugin_depend>rtt_sensor_msgs</plugin_depend> -->
-    <!-- </rtt_ros> -->
+    <rtt_ros>
+      <plugin_depend>rtt_rosnode</plugin_depend>
+    </rtt_ros>
   </export>
+
+  <!-- Do not forget to add the package to ROS_PACKAGE_PATH in order to be properly imported by the ros orocos service. -->
+  <!-- i.e. export ROS_PACKAGE_PATH=$ROS_PACKAGE_PATH:/home/flex/system/flexassembly_dev_ws/install/share -->
 </package>
