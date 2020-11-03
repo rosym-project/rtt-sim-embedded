@@ -72,6 +72,7 @@ robot.setControlMode("kuka-iiwa-7-egp-40_0", "JointTorqueCtrl")
 robot.start()
 
 var ConnPolicy cp
+connect("sot.computed_torques_output_port","robot.in_kuka-iiwa-7-egp-40_0_JointTorqueCtrl_cmd",cp)
 # conncet ports
 # qp_sot.configure()
 # qp_sot.start()
