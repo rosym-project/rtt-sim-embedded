@@ -283,6 +283,7 @@ void RobotManipulatorBullet::act()
         else
         {
             this->ctrl_mode_params_4_joints.m_forces = this->cmd_trq;
+            // this->ctrl_mode_params_4_joints.m_forces = this->gc;
         }
         sim->setJointMotorControlArray(this->robot_id, this->ctrl_mode_params_4_joints);
     }

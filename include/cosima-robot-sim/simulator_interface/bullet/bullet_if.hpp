@@ -40,6 +40,9 @@
 // Bullet-Specific Interface includes
 #include "../bullet/b3_capi_wrapper_no_gui.hpp"
 
+// ROS include for parameter server
+#include <ros/ros.h>
+
 namespace cosima
 {
 

@@ -77,6 +77,31 @@ int BulletInterface::spawnRobotAtPose(const std::string &modelName, const std::s
             bool ret = sim->resetBasePositionAndOrientation(model_id, basePosition, baseOrientation);
             if (ret)
             {
+                // Upload id to ROS parameter service
+                if (ros::param::has("robot_map"))
+                {
+                    std::map<std::string, int> map_s;
+                    if (ros::param::get("robot_map", map_s))
+                    {
+                        map_s[modelName] = model_id;
+                        ros::param::set("robot_map", map_s);
+                        // ROSCPP_DECL void set(const std::string& key, const std::map<std::string, int>& map);
+                        PRELOG(Error) << "Uploaded (update?) model_id = " << model_id << RTT::endlog();
+                    }
+                    else
+                    {
+                        PRELOG(Error) << "robot_map could not be read from server!" << RTT::endlog();
+                        return -1;
+                    }
+                }
+                else
+                {
+                    std::map<std::string, int> map_s;
+                    map_s[modelName] = model_id;
+                    ros::param::set("robot_map", map_s);
+                    PRELOG(Error) << "Uploaded model_id = " << model_id << RTT::endlog();
+                }
+
                 return model_id;
             }
             else
