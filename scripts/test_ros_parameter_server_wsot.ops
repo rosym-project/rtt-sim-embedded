@@ -26,7 +26,7 @@
 
 # export ROS_PACKAGE_PATH=$ROS_PACKAGE_PATH:/home/flex/system/flexassembly_dev_ws/install/share
 # export RTT_COMPONENT_PATH=$RTT_COMPONENT_PATH:/path/to/your/compiled/sot//devel/lib/orocos/
-# export MODEL_PATH=/where/you/cloned/ADVR_shared from https://github.com/ADVRHumanoids/ADVR_shared
+# export MODEL_PATH=/where/you/cloned/ADVR_shared from https://github.com/pouya-moh/ADVR_shared
 # source /opt/xbot/setup.sh
 
 # Load the rtt ros service lib.
@@ -37,6 +37,7 @@ import("iHQP_SoT_package")
 import("eigen_typekit")
 import("rtt_std_msgs")
 require("os")
+require("print")
 
 ## maybe:?
 #import("rtt_rosnode")
@@ -44,7 +45,8 @@ require("os")
 
 
 # to load iit models
-var string config_path = os.getenv("MODEL_PATH") + "/iiwa7/configs/kuka.yaml"
+# var string config_path = os.getenv("MODEL_PATH") + "/iiwa7/configs/kuka.yaml"
+var string config_path = os.getenv("MODEL_PATH") + "/iiwa7/configs/kuka-cmci.yaml"
 
 # Load the lib.
 # import("cosima-robot-sim")
@@ -56,6 +58,7 @@ loadComponent("sot", "QPSoT_Component")
 setActivityOnCPU("robot",0.001,90,ORO_SCHED_OTHER,0)
 setActivityOnCPU("sot",0.001,89,ORO_SCHED_OTHER,0)
 
+print.ln("--------------------------------------------------------\nPlease use an absolute path for URDF, SRDF, etc in your\nconfigs/your-robot.yaml. Not my fault, IIT design. Sigh...\n--------------------------------------------------------")
 sot.loadConfig(config_path)
 
 robot.connectBullet()
@@ -69,10 +72,10 @@ robot.configure()
 # robot.resetJointConfiguration(joint_config)
 
 robot.setControlMode("kuka-iiwa-7-egp-40_0", "JointTorqueCtrl")
-robot.start()
+# robot.start()
 
 var ConnPolicy cp
 connect("sot.computed_torques_output_port","robot.in_kuka-iiwa-7-egp-40_0_JointTorqueCtrl_cmd",cp)
 # conncet ports
-# qp_sot.configure()
-# qp_sot.start()
+# sot.configure()
+# sot.start()
