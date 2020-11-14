@@ -612,7 +612,26 @@ bool RobotManipulatorBullet::configure()
         // Setup a prototypical gripper
         this->setupGripper(_num_bullet_joints);
 
-        return RobotManipulatorIF::configure();
+        bool noError = RobotManipulatorIF::configure();
+        if (!noError)
+        {
+            return false;
+        }
+
+        // Update joint names
+        for (unsigned int j = 0; j < this->num_joints; j++)
+        {
+            int i = this->joint_indices[j];
+            for (auto it = map_joint_names_2_indices.begin(); it != map_joint_names_2_indices.end(); it++)
+            {
+                if (i == it->second)
+                {
+                    this->out_jointstate_fdb_var.name[j] = it->first;
+                    RTT::log(RTT::Error) << "SET NAME " << j << " to " << this->out_jointstate_fdb_var.name[j] << RTT::endlog();
+                    break;
+                }
+            }
+        }
     }
     else
     {
