@@ -38,6 +38,9 @@ import("eigen_typekit")
 import("rtt_std_msgs")
 require("os")
 require("print")
+# import test comp for sot
+# export RTT_COMPONENT_PATH=$RTT_COMPONENT_PATH:/path/to/your/compiled/PoseTest/build/src/orocos
+import("PoseTest")
 
 ## maybe:?
 #import("rtt_rosnode")
@@ -55,6 +58,8 @@ ros.import("cosima-robot-sim")
 loadComponent("robot","cosima::RTTRobotManipulatorSim")
 loadComponent("sot", "QPSoT_Component")
 
+loadComponent("test","PoseTest")
+
 setActivityOnCPU("robot",0.001,90,ORO_SCHED_OTHER,0)
 setActivityOnCPU("sot",0.001,89,ORO_SCHED_OTHER,0)
 
@@ -71,11 +76,24 @@ robot.configure()
 # ...
 # robot.resetJointConfiguration(joint_config)
 
+
 robot.setControlMode("kuka-iiwa-7-egp-40_0", "JointTorqueCtrl")
-# robot.start()
+robot.start()
 
 var ConnPolicy cp
+## test component ports
+connect("test.pose_input_port","sot.cart_imped_high_cartesian_pose_output_port",cp)
+connect("test.pose_output_port","sot.cart_imped_high_cartesian_pose_input_port",cp)
+connect("test.ff_out_port", "sot.cart_imped_high_feedforward_forces_input_port", cp)
+connect("test.stiff_out_port", "sot.cart_imped_high_cartesian_stiffness_input_port", cp)
+connect("test.damp_out_port", "sot.cart_imped_high_cartesian_damping_input_port", cp)
+
+test.configure()
+
+# robot ports
+connect("sot.robot_state_input_port","robot.out_kuka-iiwa-7-egp-40_0_jointstate_fdb",cp)
 connect("sot.computed_torques_output_port","robot.in_kuka-iiwa-7-egp-40_0_JointTorqueCtrl_cmd",cp)
 # conncet ports
-# sot.configure()
+sot.configure()
 # sot.start()
+# test.start()
