@@ -35,11 +35,24 @@ using namespace cosima;
 using namespace RTT;
 
 RobotManipulatorBullet::RobotManipulatorBullet(const std::string &name, const unsigned int &model_id, std::shared_ptr<b3CApiWrapperNoGui> sim, RTT::TaskContext *tc) : RobotManipulatorIF(name, tc),
-                                                                                                                                                                       ctrl_mode_params_4_motor_joints(0,0),
-                                                                                                                                                                       ctrl_mode_params_4_joints(0,0)
+                                                                                                                                                                       ctrl_mode_params_4_motor_joints(0, 0),
+                                                                                                                                                                       ctrl_mode_params_4_joints(0, 0)
 {
+    this->gripper_pointer = NULL;
     this->sim = sim;
     this->robot_id = model_id;
+
+    tc->addOperation("setGripper_" + this->robot_name + "_Command", &RobotManipulatorBullet::setGripperCommand, this);
+    tc->addOperation("initialize2FingerPrismaticGripper_" + this->robot_name, &RobotManipulatorBullet::initialize2FingerPrismaticGripper, this);
+
+    this->gripper_command_vel = 0.1; // m/s
+    this->gripper_max_force = 10.0; // N
+}
+
+void RobotManipulatorBullet::setGripperCommand(const double &vel_cmd, const double &max_force)
+{
+    this->gripper_command_vel = vel_cmd;
+    this->gripper_max_force = max_force;
 }
 
 InterfaceType RobotManipulatorBullet::getInterfaceType()
@@ -153,6 +166,16 @@ void RobotManipulatorBullet::readFromOrocos()
             this->cmd_trq[i] = this->in_JointTorqueCtrl_cmd_var(i);
         }
     }
+
+    // Read gripper commands
+    if (this->gripper_pointer)
+    {
+        this->gripper_pointer->target_params.m_targetVelocities[0] = this->gripper_command_vel;
+        this->gripper_pointer->target_params.m_targetVelocities[1] = this->gripper_command_vel;
+
+        this->gripper_pointer->target_params.m_forces[0] = this->gripper_max_force;
+        this->gripper_pointer->target_params.m_forces[1] = this->gripper_max_force;
+    }
 }
 
 void RobotManipulatorBullet::act()
@@ -260,8 +283,15 @@ void RobotManipulatorBullet::act()
         else
         {
             this->ctrl_mode_params_4_joints.m_forces = this->cmd_trq;
+            // this->ctrl_mode_params_4_joints.m_forces = this->gc;
         }
         sim->setJointMotorControlArray(this->robot_id, this->ctrl_mode_params_4_joints);
+    }
+
+    // set gripper command
+    if (this->gripper_pointer)
+    {
+        sim->setJointMotorControlArray(this->robot_id, this->gripper_pointer->target_params);
     }
 }
 
@@ -309,6 +339,13 @@ bool RobotManipulatorBullet::setControlMode(const std::string &controlMode)
         return true;
     }
     return false;
+}
+
+void RobotManipulatorBullet::initialize2FingerPrismaticGripper(const std::string &finger_1_joint_name, const std::string &finger_2_joint_name)
+{
+    gripper_pointer = std::shared_ptr<Prismatic2FingerGripper>(new Prismatic2FingerGripper());
+    gripper_pointer->finger_1_joint_name = finger_1_joint_name;
+    gripper_pointer->finger_2_joint_name = finger_2_joint_name;
 }
 
 bool RobotManipulatorBullet::configure()
@@ -572,13 +609,100 @@ bool RobotManipulatorBullet::configure()
         this->active_control_mode = ControlModes::JointPosCtrl;
         this->requested_control_mode = ControlModes::JointPosCtrl;
 
-        return RobotManipulatorIF::configure();
+        // Setup a prototypical gripper
+        this->setupGripper(_num_bullet_joints);
+
+        bool noError = RobotManipulatorIF::configure();
+        if (!noError)
+        {
+            return false;
+        }
+
+        // Update joint names
+        for (unsigned int j = 0; j < this->num_joints; j++)
+        {
+            int i = this->joint_indices[j];
+            for (auto it = map_joint_names_2_indices.begin(); it != map_joint_names_2_indices.end(); it++)
+            {
+                if (i == it->second)
+                {
+                    this->out_jointstate_fdb_var.name[j] = it->first;
+                    RTT::log(RTT::Error) << "SET NAME " << j << " to " << this->out_jointstate_fdb_var.name[j] << RTT::endlog();
+                    break;
+                }
+            }
+        }
     }
     else
     {
         PRELOG(Error, this->tc) << "Bullet Simulator Interface seems to be not connected!" << RTT::endlog();
         return false;
     }
+    return true;
+}
+
+bool RobotManipulatorBullet::setupGripper(const unsigned int &_num_bullet_joints)
+{
+    if (!this->gripper_pointer)
+    {
+        // Check semantics
+        return true;
+    }
+    ///////////////////////////////////////
+    /////// Variable Initialization ///////
+    ///////////////////////////////////////
+    // Use all non-fixed bullet joints if no KDL chain is provided
+    bool _found_gripper_1 = false;
+    bool _found_gripper_2 = false;
+    this->gripper_pointer->target_params.m_jointIndices = new int[2];
+    this->gripper_pointer->target_params.m_targetPositions = new double[2];
+    this->gripper_pointer->target_params.m_targetPositions[0] = 0.0;
+    this->gripper_pointer->target_params.m_targetPositions[1] = 0.0;
+
+    this->gripper_pointer->target_params.m_targetVelocities = new double[2];
+    this->gripper_pointer->target_params.m_targetVelocities[0] = this->gripper_pointer->closing_vel;
+    this->gripper_pointer->target_params.m_targetVelocities[1] = this->gripper_pointer->closing_vel;
+
+    this->gripper_pointer->target_params.m_forces = new double[2];
+    this->gripper_pointer->target_params.m_forces[0] = this->gripper_pointer->max_force;
+    this->gripper_pointer->target_params.m_forces[1] = this->gripper_pointer->max_force;
+
+
+    for (unsigned int i = 0; i < _num_bullet_joints; i++)
+    {
+        b3JointInfo jointInfo;
+        sim->getJointInfo(this->robot_id, i, &jointInfo);
+        int qIndex = jointInfo.m_jointIndex;
+        if ((qIndex > -1) && (jointInfo.m_jointType != eFixedType))
+        {
+            std::string _bullet_name = jointInfo.m_jointName;
+            if (this->gripper_pointer->finger_1_joint_name.compare(_bullet_name) == 0)
+            {
+                this->gripper_pointer->target_params.m_jointIndices[0] = qIndex;
+                _found_gripper_1 = true;
+            }
+            else if (this->gripper_pointer->finger_2_joint_name.compare(_bullet_name) == 0)
+            {
+                this->gripper_pointer->target_params.m_jointIndices[1] = qIndex;
+                _found_gripper_2 = true;
+            }
+        }
+    }
+
+    if (!_found_gripper_1 || !_found_gripper_2)
+    {
+        delete this->gripper_pointer->target_params.m_jointIndices;
+        delete this->gripper_pointer->target_params.m_targetPositions;
+        delete this->gripper_pointer->target_params.m_targetVelocities;
+        delete this->gripper_pointer->target_params.m_forces;
+        // this->gripper_pointer.release();
+        this->gripper_pointer = NULL; // TODO check if this is correct
+
+        PRELOG(Error, this->tc) << "Could not initialize the gripper!" << RTT::endlog();
+        return false;
+    }
+
+    PRELOG(Error, this->tc) << "Gripper sucessfully initialized!" << RTT::endlog();
     return true;
 }
 

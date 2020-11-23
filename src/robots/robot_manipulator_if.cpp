@@ -99,11 +99,13 @@ bool RobotManipulatorIF::configure()
     {
         tc->ports()->removePort("out_jointstate_fdb");
     }
+    out_jointstate_fdb_var.name.resize(this->num_joints);
     out_jointstate_fdb_var.position.resize(this->num_joints);
     out_jointstate_fdb_var.velocity.resize(this->num_joints);
     out_jointstate_fdb_var.effort.resize(this->num_joints);
     for (unsigned int i = 0; i < this->num_joints; i++)
     {
+        out_jointstate_fdb_var.name[i] = "";
         out_jointstate_fdb_var.position[i] = 0.0;
         out_jointstate_fdb_var.velocity[i] = 0.0;
         out_jointstate_fdb_var.effort[i] = 0.0;
