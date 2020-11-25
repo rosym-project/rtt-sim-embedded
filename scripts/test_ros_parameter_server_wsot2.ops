@@ -1,0 +1,148 @@
+# ============================================================
+#
+# This file is a part of CoSiMA (CogIMon) project
+#
+# Copyright (C) 2020 by Dennis Leroy Wigand <dwigand@techfak.uni-bielefeld.de>
+#
+# This file may be licensed under the terms of the
+# GNU Lesser General Public License Version 3 (the ``LGPL''),
+# or (at your option) any later version.
+#
+# Software distributed under the License is distributed
+# on an ``AS IS'' basis, WITHOUT WARRANTY OF ANY KIND, either
+# express or implied. See the LGPL for the specific language
+# governing rights and limitations.
+#
+# You should have received a copy of the LGPL along with this
+# program. If not, go to http://www.gnu.org/licenses/lgpl.html
+# or write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# The development of this software was supported by:
+#   CoR-Lab, Research Institute for Cognition and Robotics
+#     Bielefeld University
+#
+# ============================================================
+
+# export ROS_PACKAGE_PATH=$ROS_PACKAGE_PATH:/home/flex/system/flexassembly_dev_ws/install/share
+# export RTT_COMPONENT_PATH=$RTT_COMPONENT_PATH:/path/to/your/compiled/sot//devel/lib/orocos/
+# export MODEL_PATH=/where/you/cloned/ADVR_shared from https://github.com/pouya-moh/ADVR_shared
+# source /opt/xbot/setup.sh
+
+# Load the rtt ros service lib.
+import("rtt_ros")
+# iHQP: the name is generate, generally ops file is alos generate. this is here only for testing
+import("iHQP_SoT_package")
+# import other necessaire
+import("eigen_typekit")
+import("rtt_std_msgs")
+import("rtt_geometry_msgs")
+require("os")
+require("print")
+# import test comp for sot
+# export RTT_COMPONENT_PATH=$RTT_COMPONENT_PATH:/path/to/your/compiled/PoseTest/build/src/orocos
+import("PoseTest")
+import("PoseInterpolate")
+import("cosima-controller")
+
+## maybe:?
+#import("rtt_rosnode")
+import("rtt_roscomm")
+
+
+# to load iit models
+# var string config_path = os.getenv("MODEL_PATH") + "/iiwa7/configs/kuka-cmci.yaml"
+# var string config_path = os.getenv("MODEL_PATH") + "/iiwa14/configs/kuka-cmci.yaml"
+# var string config_path = os.getenv("MODEL_PATH") + "/iiwa14/configs/kuka-epfl.yaml"
+var string config_path = os.getenv("MODEL_PATH") + "/iiwa14/configs/iiwa14-camera-tmp.yaml"
+
+# Load the lib.
+# import("cosima-robot-sim")
+ros.import("cosima-robot-sim")
+# Load the robot interface.
+loadComponent("robot","cosima::RTTRobotManipulatorSim")
+loadComponent("sot", "QPSoT_Component")
+
+var string base_link = "world"
+var string ee_link = "iiwa_link_ee"
+# sot.base_link = base_link
+# sot.ee_link = ee_link
+
+loadComponent("test","PoseTest")
+loadComponent("pose","PoseInterpolate")
+loadComponent("traj","cosima::trajectories::PoseInterpolator")
+
+setActivityOnCPU("robot",0.001,90,ORO_SCHED_OTHER,0)
+setActivityOnCPU("sot",0.001,89,ORO_SCHED_OTHER,0)
+setActivityOnCPU("test",0.001,88,ORO_SCHED_OTHER,0)
+setActivityOnCPU("pose",0.001,88,ORO_SCHED_OTHER,0)
+setActivityOnCPU("traj",0.001,88,ORO_SCHED_OTHER,0)
+
+
+print.ln("--------------------------------------------------------\nPlease use an absolute path for URDF, SRDF, etc in your\nconfigs/your-robot.yaml. Not my fault, IIT design. Sigh...\n--------------------------------------------------------")
+sot.loadConfig(config_path)
+
+robot.connectBullet()
+robot.connectToRobotByName("iiwa14_0", "bullet")
+robot.defineKinematicChain("iiwa14_0", "/home/poo/Work/ROS_WS_DEV/src/py-flex-assembly/gym_flexassembly/data/robots/epfl-iiwa14/iiwa14_mod.urdf", base_link, ee_link)
+robot.configure()
+
+# import("eigen_typekit")
+# var eigen_vector joint_config = eigen_vector(7)
+# joint_config[0] = 0.2
+# ...
+# robot.resetJointConfiguration(joint_config)
+
+
+robot.setControlMode("iiwa14_0", "JointTorqueCtrl")
+#robot.start()
+traj.configure()
+
+var ConnPolicy cp
+## test component ports
+connect("test.pose_input_port","sot.cart_imped_high_cartesian_pose_output_port",cp)
+connect("pose.current_pose_in_port","sot.cart_imped_high_cartesian_pose_output_port",cp)
+#connect("test.pose_output_port","sot.cart_imped_high_cartesian_pose_input_port",cp)
+connect("pose.pose_out_port","sot.cart_imped_high_cartesian_pose_input_port",cp)
+connect("test.ff_out_port", "sot.cart_imped_high_feedforward_forces_input_port", cp)
+connect("test.cart_stiff_out_port", "sot.cart_imped_high_cartesian_stiffness_input_port", cp)
+connect("test.cart_damp_out_port", "sot.cart_imped_high_cartesian_damping_input_port", cp)
+connect("test.des_posture_output_port","sot.joint_space_redres_desired_joint_input_port",cp)
+connect("test.jnt_damp_out_port","sot.joint_space_redres_joint_damping_input_port",cp)
+connect("test.jnt_stiff_out_port","sot.joint_space_redres_joint_stiffness_input_port",cp)
+
+# Dennis:
+# connect("sot.cart_imped_high_cartesian_pose_output_port","traj.in_current_pose_port",cp)
+# connect("sot.cart_imped_high_cartesian_pose_input_port","traj.out_pose_matrix_port",cp)
+
+stream("traj.in_pose_port", ros.topic("/traj"))
+
+test.setCartStiffness(100)
+test.setCartDamping(1)
+test.setJointStiffness(5)
+test.setJointDamping(1)
+test.configure()
+test.feedback_mode = true
+
+pose.configure()
+#test.setXYZ(0.327645,-0.110072,0.385963)
+# robot ports
+connect("sot.robot_state_input_port","robot.out_iiwa14_0_jointstate_fdb",cp)
+connect("sot.computed_torques_output_port","robot.in_iiwa14_0_JointTorqueCtrl_cmd",cp)
+connect("robot.out_iiwa14_0_gc_fdb","sot.non_linear_terms_simulator_port",cp)
+# conncet ports
+sot.configure()
+sot.gravCompDamp = 1
+test.start()
+# sot.setCartLambda(0.01)
+robot.start()
+# sot.start()
+# 
+# pose.start()
+# var eigen_vector3 p = eigen_vector3(3)
+# p[2] = 0.8
+# 
+# var eigen_vector4 o = eigen_vector4(4)
+# o[0] = 1
+# pose.setPose(p,o,1)
+
