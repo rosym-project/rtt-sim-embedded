@@ -396,7 +396,7 @@ bool RobotManipulatorBullet::configure()
             // Configure Collision
             int collisionFilterGroup_kuka = 0x10;
             int collisionFilterMask_kuka = 0x1;
-            PRELOG(Error, this->tc) << "Setting collision for bullet link " << i << RTT::endlog();
+            PRELOG(Info, this->tc) << "Setting collision for bullet link " << i << RTT::endlog();
             sim->setCollisionFilterGroupMask(this->robot_id, i, collisionFilterGroup_kuka, collisionFilterMask_kuka);
         }
 
@@ -414,7 +414,7 @@ bool RobotManipulatorBullet::configure()
             // Select joints accordingly!
             for (unsigned int i = 0; i < this->kdl_chain.segments.size(); i++)
             {
-                PRELOG(Error, this->tc) << i << " KDL Segmentname " << this->kdl_chain.segments[i].getName() << ", Jointname " << this->kdl_chain.segments[i].getJoint().getName() << RTT::endlog();
+                PRELOG(Info, this->tc) << i << " KDL Segmentname " << this->kdl_chain.segments[i].getName() << ", Jointname " << this->kdl_chain.segments[i].getJoint().getName() << RTT::endlog();
                 // Ignore fixed joints
                 if (this->kdl_chain.segments[i].getJoint().getType() == KDL::Joint::None)
                 {
@@ -431,31 +431,31 @@ bool RobotManipulatorBullet::configure()
                     // Candidate Joints with types
                     if (jointInfo.m_jointType == eFixedType)
                     {
-                        PRELOG(Error, this->tc) << "[CANDIDATE] (eFixedType) joint Motorname " << jointInfo.m_jointName << " at index " << jointInfo.m_jointIndex << RTT::endlog();
+                        PRELOG(Info, this->tc) << "[CANDIDATE] (eFixedType) joint Motorname " << jointInfo.m_jointName << " at index " << jointInfo.m_jointIndex << RTT::endlog();
                     }
                     else if (jointInfo.m_jointType == eRevoluteType)
                     {
-                        PRELOG(Error, this->tc) << "[CANDIDATE] (eRevoluteType) joint Motorname " << jointInfo.m_jointName << " at index " << jointInfo.m_jointIndex << RTT::endlog();
+                        PRELOG(Info, this->tc) << "[CANDIDATE] (eRevoluteType) joint Motorname " << jointInfo.m_jointName << " at index " << jointInfo.m_jointIndex << RTT::endlog();
                     }
                     else if (jointInfo.m_jointType == ePrismaticType)
                     {
-                        PRELOG(Error, this->tc) << "[CANDIDATE] (ePrismaticType) joint Motorname " << jointInfo.m_jointName << " at index " << jointInfo.m_jointIndex << RTT::endlog();
+                        PRELOG(Info, this->tc) << "[CANDIDATE] (ePrismaticType) joint Motorname " << jointInfo.m_jointName << " at index " << jointInfo.m_jointIndex << RTT::endlog();
                     }
                     else if (jointInfo.m_jointType == eSphericalType)
                     {
-                        PRELOG(Error, this->tc) << "[CANDIDATE] (eSphericalType) joint Motorname " << jointInfo.m_jointName << " at index " << jointInfo.m_jointIndex << RTT::endlog();
+                        PRELOG(Info, this->tc) << "[CANDIDATE] (eSphericalType) joint Motorname " << jointInfo.m_jointName << " at index " << jointInfo.m_jointIndex << RTT::endlog();
                     }
                     else if (jointInfo.m_jointType == ePlanarType)
                     {
-                        PRELOG(Error, this->tc) << "[CANDIDATE] (ePlanarType) joint Motorname " << jointInfo.m_jointName << " at index " << jointInfo.m_jointIndex << RTT::endlog();
+                        PRELOG(Info, this->tc) << "[CANDIDATE] (ePlanarType) joint Motorname " << jointInfo.m_jointName << " at index " << jointInfo.m_jointIndex << RTT::endlog();
                     }
                     else if (jointInfo.m_jointType == ePoint2PointType)
                     {
-                        PRELOG(Error, this->tc) << "[CANDIDATE] (ePoint2PointType) joint Motorname " << jointInfo.m_jointName << " at index " << jointInfo.m_jointIndex << RTT::endlog();
+                        PRELOG(Info, this->tc) << "[CANDIDATE] (ePoint2PointType) joint Motorname " << jointInfo.m_jointName << " at index " << jointInfo.m_jointIndex << RTT::endlog();
                     }
                     else if (jointInfo.m_jointType == eGearType)
                     {
-                        PRELOG(Error, this->tc) << "[CANDIDATE] (eGearType) joint Motorname " << jointInfo.m_jointName << " at index " << jointInfo.m_jointIndex << RTT::endlog();
+                        PRELOG(Info, this->tc) << "[CANDIDATE] (eGearType) joint Motorname " << jointInfo.m_jointName << " at index " << jointInfo.m_jointIndex << RTT::endlog();
                     }
                     // Ignore fixed joints
                     if ((jointInfo.m_jointIndex > -1) && (jointInfo.m_jointType != eFixedType))
@@ -463,7 +463,7 @@ bool RobotManipulatorBullet::configure()
                         std::string _bullet_name = jointInfo.m_jointName;
                         if (this->kdl_chain.segments[i].getJoint().getName().compare(_bullet_name) == 0)
                         {
-                            PRELOG(Error, this->tc) << "[KDL+BULLET] Found joint Motorname " << jointInfo.m_jointName << " at index " << jointInfo.m_jointIndex << RTT::endlog();
+                            PRELOG(Info, this->tc) << "[KDL+BULLET] Found joint Motorname " << jointInfo.m_jointName << " at index " << jointInfo.m_jointIndex << RTT::endlog();
                             map_joint_names_2_indices[jointInfo.m_jointName] = jointInfo.m_jointIndex;
                             vec_joint_indices.push_back(jointInfo.m_jointIndex);
                             _found_bullet_joint_for_kdl_joint = true;
@@ -588,7 +588,7 @@ bool RobotManipulatorBullet::configure()
                 this->M[i * this->num_motor_joints + j] = 0.0;
             }
             // sim->resetJointState(this->robot_id, this->joint_indices[i], 0.0);
-            PRELOG(Error, this->tc) << "Resetting joint [" << i << "] = " << this->joint_indices[i] << RTT::endlog();
+            PRELOG(Info, this->tc) << "Resetting joint [" << i << "] = " << this->joint_indices[i] << RTT::endlog();
         }
 
         // Initialize the global control parameters (This could perhaps evolve into a memory leak, if the arrays are not freed when stopped!)
