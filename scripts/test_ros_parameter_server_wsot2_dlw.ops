@@ -149,4 +149,4 @@ sot.start()
 # o[0] = 1
 # pose.setPose(p,o,1)
 
-# traj.start()
+traj.start()
