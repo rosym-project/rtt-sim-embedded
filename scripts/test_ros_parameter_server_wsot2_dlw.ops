@@ -118,7 +118,7 @@ connect("test.jnt_stiff_out_port","sot.joint_space_redres_joint_stiffness_input_
 connect("sot.cart_imped_high_cartesian_pose_rosout_port","traj.in_current_pose_port",cp)
 connect("traj.out_pose_matrix_port","sot.cart_imped_high_cartesian_pose_input_port",cp)
 
-stream("sot.cart_imped_high_cartesian_pose_rosout_port", ros.topic("/cur_ee_pose"))
+# stream("sot.cart_imped_high_cartesian_pose_rosout_port", ros.topic("/cur_ee_pose"))
 
 stream("traj.in_pose_port", ros.topic("/traj"))
 stream("traj.in_pose_pt_port", ros.topic("/traj_pt"))
