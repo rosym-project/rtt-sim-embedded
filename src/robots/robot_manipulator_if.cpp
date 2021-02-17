@@ -44,6 +44,8 @@ RobotManipulatorIF::RobotManipulatorIF(const std::string &name, RTT::TaskContext
     this->tc = tc;
 
     this->num_joints = 0;
+
+    this->add_artificial_gravity = false;
 }
 
 bool RobotManipulatorIF::configure()
@@ -187,4 +189,9 @@ bool RobotManipulatorIF::defineKinematicChain(const std::string &urdf, const std
 
     this->kdl_chain = _chain_selected_tmp;
     return true;
+}
+
+void RobotManipulatorIF::addArtificialGravity(bool gravity)
+{
+    this->add_artificial_gravity = gravity;
 }

@@ -84,6 +84,8 @@ namespace cosima
 
         virtual InterfaceType getInterfaceType() = 0;
 
+        void addArtificialGravity(bool gravity);
+
     protected:
         RTT::TaskContext *tc;
         std::string robot_name;
@@ -122,6 +124,8 @@ namespace cosima
         // KDL
         KDL::Tree kdl_tree;
         KDL::Chain kdl_chain;
+
+        bool add_artificial_gravity;
     };
 
 } // namespace cosima

@@ -86,6 +86,8 @@ namespace cosima
 
     bool setBasePosition(const std::string &modelName, const double &x, const double &y, const double &z);
 
+    bool addArtificialGravity(const std::string &modelName, bool gravity);
+
 #ifndef DISABLE_BULLET
     bool connectBullet();
     void disconnectBullet();

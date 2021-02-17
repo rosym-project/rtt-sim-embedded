@@ -77,6 +77,22 @@ RTTRobotManipulatorSim::RTTRobotManipulatorSim(std::string const &name) : RTT::T
         addOperation("defineKinematicChain", &RTTRobotManipulatorSim::defineKinematicChain, this, RTT::OwnThread);
 
         addOperation("setBasePosition", &RTTRobotManipulatorSim::setBasePosition, this, RTT::OwnThread);
+
+        addOperation("addArtificialGravity", &RTTRobotManipulatorSim::addArtificialGravity, this, RTT::OwnThread);
+    }
+}
+
+bool RTTRobotManipulatorSim::addArtificialGravity(const std::string &modelName, bool gravity)
+{
+    if (map_robot_manipulators.count(modelName))
+    {
+        map_robot_manipulators[modelName]->addArtificialGravity(gravity);
+        return true;
+    }
+    else
+    {
+        PRELOG(Error) << "Robot " << modelName << " cannot be found!" << RTT::endlog();
+        return false;
     }
 }
 

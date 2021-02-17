@@ -283,6 +283,14 @@ void RobotManipulatorBullet::act()
         else
         {
             this->ctrl_mode_params_4_joints.m_forces = this->cmd_trq;
+
+            if (this->add_artificial_gravity)
+            {
+                for (unsigned int j_index_id = 0; j_index_id < this->num_joints; j_index_id++)
+                {
+                    this->ctrl_mode_params_4_joints.m_forces[j_index_id] += this->out_gc_fdb_var(j_index_id);
+                }
+            }
             // this->ctrl_mode_params_4_joints.m_forces = this->gc;
         }
         sim->setJointMotorControlArray(this->robot_id, this->ctrl_mode_params_4_joints);
